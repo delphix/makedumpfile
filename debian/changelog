@@ -1,3 +1,9 @@
+makedumpfile (1:1.6.7-1ubuntu2.4) focal; urgency=low
+
+  * debian/rules: Remove "ata_piix.prefer_ms_hyperv=0" (LP: #1978333)
+
+ -- Heather Lemon <heather.lemon@canonical.com>  Mon, 13 Jun 2022 13:59:29 +0000
+
 makedumpfile (1:1.6.7-1ubuntu2.3) focal; urgency=medium
 
   * makedumpfile falls back to cp with the 5.11 kernel (LP: #1942784)
