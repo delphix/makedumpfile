@@ -383,10 +383,11 @@ print_progress(const char *msg, unsigned long current, unsigned long end, struct
 	struct timespec delta;
 	unsigned long eta;
 	char eta_msg[16] = " ";
+	time_t frequency = flag_ignore_r_char ? 10 : 1;
 
 	if (current < end) {
 		tm = time(NULL);
-		if (tm - last_time < 1)
+		if (tm - last_time < frequency)
 			return;
 		last_time = tm;
 		progress = current * 1000 / end;
@@ -400,9 +401,8 @@ print_progress(const char *msg, unsigned long current, unsigned long end, struct
 		eta_to_human_short(eta, eta_msg);
 	}
 	if (flag_ignore_r_char) {
-		PROGRESS_MSG("%-" PROGRESS_MAXLEN "s: [%3u.%u %%] %c  %16s\n",
-			     msg, progress / 10, progress % 10,
-			     spinner[lapse % 4], eta_msg);
+		PROGRESS_MSG("%-" PROGRESS_MAXLEN "s: [%3u.%u %%]  %16s\n",
+			     msg, progress / 10, progress % 10, eta_msg);
 	} else {
 		PROGRESS_MSG("\r");
 		PROGRESS_MSG("%-" PROGRESS_MAXLEN "s: [%3u.%u %%] %c  %16s",
