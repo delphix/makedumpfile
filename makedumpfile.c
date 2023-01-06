@@ -4414,6 +4414,14 @@ out:
 	if (is_xen_memory() && !get_dom0_mapnr())
 		return FALSE;
 
+	/*
+	 * If kdump-tools called us, set flag_ignore_r_char since stderr
+	 * will be sent to a line buffering console and we want the '\r'
+	 * to be replace by a '\n' in PROGRESS_MSG() output.
+	 */
+	if (getenv("KDUMP_KERNEL") != NULL)
+		flag_ignore_r_char = 1;
+
 	if (debug_info) {
 		if (info->flag_sadump)
 			(void) sadump_virt_phys_base();
