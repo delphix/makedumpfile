@@ -195,7 +195,7 @@ isAnon(unsigned long mapping)
  *  2. it has been verified that (1UL<<2) was never set, so it is
  *     safe to mask that bit off even in old kernels.
  */
-#define SECTION_MAP_LAST_BIT	(1UL<<5)
+#define SECTION_MAP_LAST_BIT	(1UL<<4)
 #define SECTION_MAP_MASK	(~(SECTION_MAP_LAST_BIT-1))
 #define NR_SECTION_ROOTS()	divideup(num_section, SECTIONS_PER_ROOT())
 #define SECTION_NR_TO_PFN(sec)	((sec) << PFN_SECTION_SHIFT())
@@ -1339,7 +1339,6 @@ struct DumpInfo {
 	int		vmemmap_cnt;
 	struct ppc64_vmemmap	*vmemmap_list;
 	unsigned long	kaslr_offset;
-	unsigned long	private_page_filter;
 
 	/*
 	 * page table info for ppc64
@@ -1728,8 +1727,6 @@ struct size_table {
 	long	cpu_spec;
 
 	long	pageflags;
-
-	long	uts_namespace;
 };
 
 struct offset_table {
@@ -1937,10 +1934,6 @@ struct offset_table {
 	struct cpu_spec_s {
 		long	mmu_features;
 	} cpu_spec;
-
-	struct uts_namespace_s {
-		long	name;
-	} uts_namespace;
 };
 
 /*
@@ -2425,7 +2418,6 @@ struct elf_prstatus {
 #define OPT_WORKING_DIR         OPT_START+15
 #define OPT_NUM_THREADS         OPT_START+16
 #define OPT_PARTIAL_DMESG       OPT_START+17
-#define OPT_PRIVATE_PAGE_FILTER OPT_START+18
 
 /*
  * Function Prototype.

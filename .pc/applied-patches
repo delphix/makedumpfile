@@ -7,3 +7,4 @@
 0008-PATCH-Retrieve-MAX_PHYSMEM_BITS-from-vmcoreinfo.patch
 0009-PATCH-1-2-printk-add-support-for-lockless-ringbuffer.patch
 0010-PATCH-2-2-printk-use-committed-finalized-state-value.patch
+lp1970672-PATCH-Increase-SECTION_MAP_LAST_BIT-to-5.patch
