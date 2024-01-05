@@ -1,3 +1,11 @@
+makedumpfile (1:1.6.7-1ubuntu2.5) focal; urgency=medium
+
+  * makedumpfile falls back to cp with 5.12 kernel (LP: #1970672)
+    - can also fail with __vtop4_x86_64: Can't get a valid pmd_pte.
+    - d/p/lp1970672-PATCH-Increase-SECTION_MAP_LAST_BIT-to-5.patch 
+
+ -- Heather Lemon <heather.lemon@canonical.com>  Tue, 21 Nov 2023 15:19:22 +0000
+
 makedumpfile (1:1.6.7-1ubuntu2.4) focal; urgency=low
 
   * debian/rules: Remove "ata_piix.prefer_ms_hyperv=0" (LP: #1978333)
