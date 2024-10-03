@@ -196,6 +196,10 @@ ppc64_vmemmap_init(void)
 	int psize, shift;
 	ulong head;
 
+	/* initialise vmemmap_list in case SYMBOL(vmemmap_list) is not found */
+	info->vmemmap_list = NULL;
+	info->vmemmap_cnt = 0;
+
 	if ((SYMBOL(vmemmap_list) == NOT_FOUND_SYMBOL)
 	    || (SYMBOL(mmu_psize_defs) == NOT_FOUND_SYMBOL)
 	    || (SYMBOL(mmu_vmemmap_psize) == NOT_FOUND_SYMBOL)
@@ -216,15 +220,24 @@ ppc64_vmemmap_init(void)
 		return FALSE;
 	info->vmemmap_psize = 1 << shift;
 
-	if (!readmem(VADDR, SYMBOL(vmemmap_list), &head, sizeof(unsigned long)))
-		return FALSE;
-
 	/*
-	 * Get vmemmap list count and populate vmemmap regions info
-	 */
-	info->vmemmap_cnt = get_vmemmap_list_info(head);
-	if (info->vmemmap_cnt == 0)
-		return FALSE;
+	 * vmemmap_list symbol can be missing or set to 0 in the kernel.
+	 * This would imply vmemmap region is mapped in the kernel pagetable.
+	 *
+	 * So, read vmemmap_list anyway, and use 'vmemmap_list' if it's not empty
+	 * (head != NULL), or we will do a kernel pagetable walk for vmemmap address
+	 * translation later
+	 **/
+	readmem(VADDR, SYMBOL(vmemmap_list), &head, sizeof(unsigned long));
+
+	if (head) {
+		/*
+		 * Get vmemmap list count and populate vmemmap regions info
+		 */
+		info->vmemmap_cnt = get_vmemmap_list_info(head);
+		if (info->vmemmap_cnt == 0)
+			return FALSE;
+	}
 
 	info->flag_vmemmap = TRUE;
 	return TRUE;
@@ -237,7 +250,7 @@ ppc64_vmalloc_init(void)
 		/*
 		 * 64K pagesize
 		 */
-		if (info->cur_mmu_type & RADIX_MMU) {
+		if (info->cur_mmu_type & MMU_TYPE_RADIX) {
 			info->l1_index_size = PTE_INDEX_SIZE_RADIX_64K;
 			info->l2_index_size = PMD_INDEX_SIZE_RADIX_64K;
 			info->l3_index_size = PUD_INDEX_SIZE_RADIX_64K;
@@ -287,7 +300,7 @@ ppc64_vmalloc_init(void)
 		/*
 		 * 4K pagesize
 		 */
-		if (info->cur_mmu_type & RADIX_MMU) {
+		if (info->cur_mmu_type & MMU_TYPE_RADIX) {
 			info->l1_index_size = PTE_INDEX_SIZE_RADIX_4K;
 			info->l2_index_size = PMD_INDEX_SIZE_RADIX_4K;
 			info->l3_index_size = PUD_INDEX_SIZE_RADIX_4K;
@@ -347,29 +360,6 @@ ppc64_vmalloc_init(void)
 	return TRUE;
 }
 
-/*
- *  If the vmemmap address translation information is stored in the kernel,
- *  make the translation.
- */
-static unsigned long long
-ppc64_vmemmap_to_phys(unsigned long vaddr)
-{
-	int	i;
-	ulong	offset;
-	unsigned long long paddr = NOT_PADDR;
-
-	for (i = 0; i < info->vmemmap_cnt; i++) {
-		if ((vaddr >= info->vmemmap_list[i].virt) && (vaddr <
-		    (info->vmemmap_list[i].virt + info->vmemmap_psize))) {
-			offset = vaddr - info->vmemmap_list[i].virt;
-			paddr = info->vmemmap_list[i].phys + offset;
-			break;
-		}
-	}
-
-	return paddr;
-}
-
 static unsigned long long
 ppc64_vtop_level4(unsigned long vaddr)
 {
@@ -379,6 +369,8 @@ ppc64_vtop_level4(unsigned long vaddr)
 	unsigned long long pgd_pte, pud_pte;
 	unsigned long long pmd_pte, pte;
 	unsigned long long paddr = NOT_PADDR;
+	uint is_hugepage = 0;
+	uint pdshift;
 	uint swap = 0;
 
 	if (info->page_buf == NULL) {
@@ -413,6 +405,13 @@ ppc64_vtop_level4(unsigned long vaddr)
 	if (!pgd_pte)
 		return NOT_PADDR;
 
+	if (IS_HUGEPAGE(pgd_pte)) {
+		is_hugepage = 1;
+		pte = pgd_pte;
+		pdshift = info->l4_shift;
+		goto out;
+	}
+
 	/*
 	 * Sometimes we don't have level3 pagetable entries
 	 */
@@ -426,6 +425,13 @@ ppc64_vtop_level4(unsigned long vaddr)
 		pud_pte = swap64(ULONG((info->page_buf + PAGEOFFSET(page_upper))), swap);
 		if (!pud_pte)
 			return NOT_PADDR;
+
+		if (IS_HUGEPAGE(pud_pte)) {
+			is_hugepage = 1;
+			pte = pud_pte;
+			pdshift = info->l3_shift;
+			goto out;
+		}
 	} else {
 		pud_pte = pgd_pte;
 	}
@@ -439,6 +445,13 @@ ppc64_vtop_level4(unsigned long vaddr)
 	pmd_pte = swap64(ULONG((info->page_buf + PAGEOFFSET(page_middle))), swap);
 	if (!(pmd_pte))
 		return NOT_PADDR;
+
+	if (IS_HUGEPAGE(pmd_pte)) {
+		is_hugepage = 1;
+		pte = pmd_pte;
+		pdshift = info->l2_shift;
+		goto out;
+	}
 
 	pmd_pte = pmd_page_vaddr_l4(pmd_pte);
 	page_table = (ulong *)(pmd_pte)
@@ -456,8 +469,40 @@ ppc64_vtop_level4(unsigned long vaddr)
 	if (!pte)
 		return NOT_PADDR;
 
-	paddr = PAGEBASE(PTOB((pte & info->pte_rpn_mask) >> info->pte_rpn_shift))
+out:
+	if (is_hugepage) {
+		paddr = PAGEBASE(PTOB((pte & info->pte_rpn_mask) >> info->pte_rpn_shift))
+			+ (vaddr & ((1UL << pdshift) - 1));
+	} else {
+		paddr = PAGEBASE(PTOB((pte & info->pte_rpn_mask) >> info->pte_rpn_shift))
 			+ PAGEOFFSET(vaddr);
+	}
+
+	return paddr;
+}
+
+/*
+ *  If the vmemmap address translation information is stored in the kernel,
+ *  make the translation.
+ */
+static unsigned long long
+ppc64_vmemmap_to_phys(unsigned long vaddr)
+{
+	int	i;
+	ulong	offset;
+	unsigned long long paddr = NOT_PADDR;
+
+	if (!info->vmemmap_list)
+		return ppc64_vtop_level4(vaddr);
+
+	for (i = 0; i < info->vmemmap_cnt; i++) {
+		if ((vaddr >= info->vmemmap_list[i].virt) && (vaddr <
+		    (info->vmemmap_list[i].virt + info->vmemmap_psize))) {
+			offset = vaddr - info->vmemmap_list[i].virt;
+			paddr = info->vmemmap_list[i].phys + offset;
+			break;
+		}
+	}
 
 	return paddr;
 }
@@ -523,7 +568,9 @@ get_machdep_info_ppc64(void)
 	/*
 	 * Get vmalloc_start value from either vmap_area_list or vmlist.
 	 */
-	if ((SYMBOL(vmap_area_list) != NOT_FOUND_SYMBOL)
+	if (NUMBER(vmalloc_start) != NOT_FOUND_NUMBER) {
+		vmalloc_start = NUMBER(vmalloc_start);
+	} else if ((SYMBOL(vmap_area_list) != NOT_FOUND_SYMBOL)
 	    && (OFFSET(vmap_area.va_start) != NOT_FOUND_STRUCTURE)
 	    && (OFFSET(vmap_area.list) != NOT_FOUND_STRUCTURE)) {
 		if (!readmem(VADDR, SYMBOL(vmap_area_list) + OFFSET(list_head.next),
@@ -567,8 +614,8 @@ get_machdep_info_ppc64(void)
 		return FALSE;
 	}
 
+	info->vmemmap_start = VMEMMAP_REGION_ID << REGION_SHIFT;
 	if (SYMBOL(vmemmap_list) != NOT_FOUND_SYMBOL) {
-		info->vmemmap_start = VMEMMAP_REGION_ID << REGION_SHIFT;
 		info->vmemmap_end = info->vmemmap_start;
 		if (ppc64_vmemmap_init() == FALSE) {
 			ERRMSG("Can't get vmemmap list info.\n");
@@ -590,14 +637,19 @@ get_versiondep_info_ppc64()
 	 * On PowerISA 3.0 based server processors, a kernel can run with
 	 * radix MMU or standard MMU. Get the current MMU type.
 	 */
-	info->cur_mmu_type = STD_MMU;
-	if ((SYMBOL(cur_cpu_spec) != NOT_FOUND_SYMBOL)
+	info->cur_mmu_type = MMU_TYPE_STD;
+
+	if (NUMBER(RADIX_MMU) != NOT_FOUND_SYMBOL) {
+		if (NUMBER(RADIX_MMU) == 1) {
+			info->cur_mmu_type = MMU_TYPE_RADIX;
+		}
+	} else if ((SYMBOL(cur_cpu_spec) != NOT_FOUND_SYMBOL)
 	    && (OFFSET(cpu_spec.mmu_features) != NOT_FOUND_STRUCTURE)) {
 		if (readmem(VADDR, SYMBOL(cur_cpu_spec), &cur_cpu_spec,
 		    sizeof(cur_cpu_spec))) {
 			if (readmem(VADDR, cur_cpu_spec + OFFSET(cpu_spec.mmu_features),
 			    &mmu_features, sizeof(mmu_features)))
-				info->cur_mmu_type = mmu_features & RADIX_MMU;
+				info->cur_mmu_type = mmu_features & MMU_TYPE_RADIX;
 		}
 	}
 
@@ -639,11 +691,16 @@ vaddr_to_paddr_ppc64(unsigned long vaddr)
 	if ((SYMBOL(vmap_area_list) == NOT_FOUND_SYMBOL)
 	    || (OFFSET(vmap_area.va_start) == NOT_FOUND_STRUCTURE)
 	    || (OFFSET(vmap_area.list) == NOT_FOUND_STRUCTURE)) {
-		if ((SYMBOL(vmlist) == NOT_FOUND_SYMBOL)
-		    || (OFFSET(vm_struct.addr) == NOT_FOUND_STRUCTURE)) {
-			ERRMSG("Can't get info for vmalloc translation.\n");
-			return NOT_PADDR;
-		}
+		/*
+		 * Don't depend on vmap_area_list/vmlist if vmalloc_start is set in
+		 * vmcoreinfo, in that case proceed without error
+		 */
+		if (NUMBER(vmalloc_start) == NOT_FOUND_NUMBER)
+			if ((SYMBOL(vmlist) == NOT_FOUND_SYMBOL)
+				|| (OFFSET(vm_struct.addr) == NOT_FOUND_STRUCTURE)) {
+				ERRMSG("Can't get info for vmalloc translation.\n");
+				return NOT_PADDR;
+			}
 	}
 
 	return ppc64_vtop_level4(vaddr);

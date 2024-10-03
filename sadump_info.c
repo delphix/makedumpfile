@@ -214,11 +214,12 @@ int
 sadump_copy_1st_bitmap_from_memory(void)
 {
 	struct sadump_header *sh = si->sh_memory;
-	char buf[si->sh_memory->block_size];
 	off_t offset_page;
 	unsigned long bitmap_offset, bitmap_len;
 	mdf_pfn_t pfn, pfn_bitmap1;
 	extern mdf_pfn_t pfn_memhole;
+	size_t buf_len;
+	char *buf;
 
 	bitmap_offset =	si->sub_hdr_offset + sh->block_size*sh->sub_hdr_size;
 	bitmap_len = sh->block_size * sh->bitmap_blocks;
@@ -233,11 +234,21 @@ sadump_copy_1st_bitmap_from_memory(void)
 		       info->bitmap1->file_name, strerror(errno));
 		return FALSE;
 	}
+
+	buf_len = si->sh_memory->block_size;
+	buf = malloc(buf_len);
+	if (!buf) {
+		ERRMSG("Can't allocate buffer. %s\n", strerror(errno));
+		return FALSE;
+	}
+	memset(buf, 0, buf_len);
+
 	offset_page = 0;
 	while (offset_page < bitmap_len) {
-		if (read(info->fd_memory, buf, sizeof(buf)) != sizeof(buf)) {
+		if (read(info->fd_memory, buf, buf_len) != buf_len) {
 			ERRMSG("Can't read %s. %s\n",
 			       info->name_memory, strerror(errno));
+			free(buf);
 			return FALSE;
 		}
 		/*
@@ -247,13 +258,14 @@ sadump_copy_1st_bitmap_from_memory(void)
 		 * order to reuse bitmaps in sadump formats in the
 		 * kdump-compressed format.
 		 */
-		reverse_bit(buf, sizeof(buf));
-		if (write(info->bitmap1->fd, buf, sizeof(buf)) != sizeof(buf)) {
+		reverse_bit(buf, buf_len);
+		if (write(info->bitmap1->fd, buf, buf_len) != buf_len) {
 			ERRMSG("Can't write the bitmap(%s). %s\n",
 			       info->bitmap1->file_name, strerror(errno));
+			free(buf);
 			return FALSE;
 		}
-		offset_page += sizeof(buf);
+		offset_page += buf_len;
 	}
 
 	pfn_bitmap1 = 0;
@@ -288,6 +300,7 @@ sadump_copy_1st_bitmap_from_memory(void)
 		}
 	}
 
+	free(buf);
 	return TRUE;
 }
 
@@ -1059,46 +1072,6 @@ get_vec0_addr(ulong idtr)
 }
 
 /*
- * Parse a string of [size[KMG]@]offset[KMG]
- * Import from Linux kernel(lib/cmdline.c)
- */
-static ulong memparse(char *ptr, char **retptr)
-{
-	char *endptr;
-
-	unsigned long long ret = strtoull(ptr, &endptr, 0);
-
-	switch (*endptr) {
-	case 'E':
-	case 'e':
-		ret <<= 10;
-	case 'P':
-	case 'p':
-		ret <<= 10;
-	case 'T':
-	case 't':
-		ret <<= 10;
-	case 'G':
-	case 'g':
-		ret <<= 10;
-	case 'M':
-	case 'm':
-		ret <<= 10;
-	case 'K':
-	case 'k':
-		ret <<= 10;
-		endptr++;
-	default:
-		break;
-	}
-
-	if (retptr)
-		*retptr = endptr;
-
-	return ret;
-}
-
-/*
  * Find "elfcorehdr=" in the boot parameter of kernel and return the address
  * of elfcorehdr.
  */
@@ -1293,6 +1266,30 @@ finish:
 	return ret;
 }
 
+static int linux_banner_sanity_check(ulong cr3)
+{
+	unsigned long linux_banner_paddr;
+	char buf[sizeof("Linux version")];
+
+	linux_banner_paddr = vtop4_x86_64_pagetable(SYMBOL(linux_banner), cr3);
+	if (linux_banner_paddr == NOT_PADDR) {
+		DEBUG_MSG("sadump: linux_banner address translation failed\n");
+		return FALSE;
+	}
+
+	if (!readmem(PADDR, linux_banner_paddr, &buf, sizeof(buf))) {
+		DEBUG_MSG("sadump: reading linux_banner failed\n");
+		return FALSE;
+	}
+
+	if (!STRNEQ(buf, "Linux version")) {
+		DEBUG_MSG("sadump: linux_banner sanity check failed\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 /*
  * Calculate kaslr_offset and phys_base
  *
@@ -1365,64 +1362,94 @@ finish:
 #define PTI_USER_PGTABLE_BIT		(info->page_shift)
 #define PTI_USER_PGTABLE_MASK		(1 << PTI_USER_PGTABLE_BIT)
 #define CR3_PCID_MASK			0xFFFull
+#define CR4_LA57			(1 << 12)
 int
 calc_kaslr_offset(void)
 {
 	struct sadump_header *sh = si->sh_memory;
 	uint64_t idtr = 0, cr3 = 0, idtr_paddr;
-	struct sadump_smram_cpu_state smram, zero;
+	struct sadump_smram_cpu_state smram;
 	int apicid;
 	unsigned long divide_error_vmcore, divide_error_vmlinux;
 	unsigned long kaslr_offset, phys_base;
 	unsigned long kaslr_offset_kdump, phys_base_kdump;
+	int sanity_check_passed = FALSE;
 
-	memset(&zero, 0, sizeof(zero));
 	for (apicid = 0; apicid < sh->nr_cpus; ++apicid) {
+
+		DEBUG_MSG("sadump: apicid: %d\n", apicid);
+
 		if (!get_smram_cpu_state(apicid, &smram)) {
 			ERRMSG("get_smram_cpu_state error\n");
 			return FALSE;
 		}
 
-		if (memcmp(&smram, &zero, sizeof(smram)) != 0)
+		idtr = ((uint64_t)smram.IdtUpper)<<32|(uint64_t)smram.IdtLower;
+
+		if (!smram.Cr3 || !idtr) {
+			DEBUG_MSG("sadump: cr3: %lx idt: %lx, skipped\n",
+				  smram.Cr3, idtr);
+			continue;
+		}
+
+		if ((SYMBOL(pti_init) != NOT_FOUND_SYMBOL) ||
+		    (SYMBOL(kaiser_init) != NOT_FOUND_SYMBOL))
+			cr3 = smram.Cr3 & ~(CR3_PCID_MASK|PTI_USER_PGTABLE_MASK);
+		else
+			cr3 = smram.Cr3 & ~CR3_PCID_MASK;
+
+		NUMBER(pgtable_l5_enabled) = !!(smram.Cr4 & CR4_LA57);
+
+		/* Convert virtual address of IDT table to physical address */
+		idtr_paddr = vtop4_x86_64_pagetable(idtr, cr3);
+		if (idtr_paddr == NOT_PADDR) {
+			DEBUG_MSG("sadump: converting IDT physical address "
+				  "failed.\n");
+			continue;
+		}
+
+		/* Now we can calculate kaslr_offset and phys_base */
+		divide_error_vmlinux = SYMBOL(divide_error);
+		divide_error_vmcore = get_vec0_addr(idtr_paddr);
+		kaslr_offset = divide_error_vmcore - divide_error_vmlinux;
+		phys_base = idtr_paddr -
+			(SYMBOL(idt_table)+kaslr_offset-__START_KERNEL_map);
+
+		info->kaslr_offset = kaslr_offset;
+		info->phys_base = phys_base;
+
+		DEBUG_MSG("sadump: idtr=%" PRIx64 "\n", idtr);
+		DEBUG_MSG("sadump: cr3=%" PRIx64 "\n", cr3);
+		DEBUG_MSG("sadump: cr4=%" PRIx32 "\n", smram.Cr4);
+		DEBUG_MSG("sadump: idtr(phys)=%" PRIx64 "\n", idtr_paddr);
+		DEBUG_MSG("sadump: devide_error(vmlinux)=%lx\n",
+			  divide_error_vmlinux);
+		DEBUG_MSG("sadump: devide_error(vmcore)=%lx\n",
+			  divide_error_vmcore);
+
+		/* Reload symbol */
+		if (!get_symbol_info()) {
+			ERRMSG("Reading symbol table failed\n");
+			return FALSE;
+		}
+
+		/* Sanity check */
+		if (linux_banner_sanity_check(cr3)) {
+			sanity_check_passed = TRUE;
 			break;
+		}
+
+		info->kaslr_offset = 0;
+		info->phys_base = 0;
 	}
-	if (apicid >= sh->nr_cpus) {
-		ERRMSG("Can't get smram state\n");
-		return FALSE;
+
+	if (!sanity_check_passed) {
+		ERRMSG("failed to calculate kaslr_offset and phys_base; "
+		       "default to 0\n");
+		info->kaslr_offset = 0;
+		info->phys_base = 0;
+		return TRUE;
 	}
-
-	idtr = ((uint64_t)smram.IdtUpper)<<32 | (uint64_t)smram.IdtLower;
-	if ((SYMBOL(pti_init) != NOT_FOUND_SYMBOL) ||
-	    (SYMBOL(kaiser_init) != NOT_FOUND_SYMBOL))
-		cr3 = smram.Cr3 & ~(CR3_PCID_MASK|PTI_USER_PGTABLE_MASK);
-	else
-		cr3 = smram.Cr3 & ~CR3_PCID_MASK;
-
-	/* Convert virtual address of IDT table to physical address */
-	if ((idtr_paddr = vtop4_x86_64_pagetable(idtr, cr3)) == NOT_PADDR)
-		return FALSE;
-
-	/* Now we can calculate kaslr_offset and phys_base */
-	divide_error_vmlinux = SYMBOL(divide_error);
-	divide_error_vmcore = get_vec0_addr(idtr_paddr);
-	kaslr_offset = divide_error_vmcore - divide_error_vmlinux;
-	phys_base = idtr_paddr -
-		(SYMBOL(idt_table) + kaslr_offset - __START_KERNEL_map);
-
-	info->kaslr_offset = kaslr_offset;
-	info->phys_base = phys_base;
-
-	DEBUG_MSG("sadump: idtr=%" PRIx64 "\n", idtr);
-	DEBUG_MSG("sadump: cr3=%" PRIx64 "\n", cr3);
-	DEBUG_MSG("sadump: idtr(phys)=%" PRIx64 "\n", idtr_paddr);
-	DEBUG_MSG("sadump: devide_error(vmlinux)=%lx\n",
-		divide_error_vmlinux);
-	DEBUG_MSG("sadump: devide_error(vmcore)=%lx\n",
-		divide_error_vmcore);
-
-	/* Reload symbol */
-	if (!get_symbol_info())
-		return FALSE;
 
 	/*
 	 * Check if current kaslr_offset/phys_base is for 1st kernel or 2nd
@@ -1430,13 +1457,15 @@ calc_kaslr_offset(void)
 	 * from vmcoreinfo
 	 */
 	if (get_kaslr_offset_from_vmcoreinfo(cr3, &kaslr_offset_kdump,
-					    &phys_base_kdump)) {
+					     &phys_base_kdump)) {
 		info->kaslr_offset = kaslr_offset_kdump;
 		info->phys_base = phys_base_kdump;
 
 		/* Reload symbol */
-		if (!get_symbol_info())
+		if (!get_symbol_info()) {
+			ERRMSG("Reading symbol table failed\n");
 			return FALSE;
+		}
 	}
 
 	DEBUG_MSG("sadump: kaslr_offset=%lx\n", info->kaslr_offset);
@@ -1732,11 +1761,11 @@ per_cpu_init(void)
 		return FALSE;
 	}
 
-	if (!readmem(VADDR, SYMBOL(__per_cpu_load), &si->__per_cpu_load,
-		     sizeof(unsigned long))) {
-		ERRMSG("Can't read __per_cpu_load memory.\n");
+	if (SYMBOL(__per_cpu_load) == NOT_FOUND_SYMBOL) {
+		ERRMSG("Can't find __per_cpu_load symbol.\n");
 		return FALSE;
 	}
+	si->__per_cpu_load = SYMBOL(__per_cpu_load);
 
 	DEBUG_MSG("sadump: __per_cpu_load: %#lx\n", si->__per_cpu_load);
 	DEBUG_MSG("sadump: __per_cpu_offset: LENGTH: %ld\n",

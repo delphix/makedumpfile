@@ -38,6 +38,9 @@
 #ifdef USESNAPPY
 #include <snappy-c.h>
 #endif
+#ifdef USEZSTD
+#include <zstd.h>
+#endif
 #include "common.h"
 #include "dwarf_info.h"
 #include "diskdump_mod.h"
@@ -158,12 +161,9 @@ test_bit(int nr, unsigned long addr)
 #define isSwapBacked(flags)	test_bit(NUMBER(PG_swapbacked), flags)
 #define isHWPOISON(flags)	(test_bit(NUMBER(PG_hwpoison), flags) \
 				&& (NUMBER(PG_hwpoison) != NOT_FOUND_NUMBER))
-
-static inline int
-isAnon(unsigned long mapping)
-{
-	return ((unsigned long)mapping & PAGE_MAPPING_ANON) != 0;
-}
+#define isSlab(flags)		test_bit(NUMBER(PG_slab), flags)
+#define isAnon(mapping, flags)	(((unsigned long)mapping & PAGE_MAPPING_ANON) != 0 \
+				&& !isSlab(flags))
 
 #define PTOB(X)			(((unsigned long long)(X)) << PAGESHIFT())
 #define BTOP(X)			(((unsigned long long)(X)) >> PAGESHIFT())
@@ -481,6 +481,9 @@ do { \
 #ifdef USELZO
 #define WRKMEM_PARALLEL(i)		info->parallel_info[i].wrkmem
 #endif
+#ifdef USEZSTD
+#define ZSTD_CCTX_PARALLEL(i)		info->parallel_info[i].zstd_cctx
+#endif
 /*
  * kernel version
  *
@@ -495,12 +498,17 @@ do { \
 #define KVER_MIN_SHIFT 16
 #define KERNEL_VERSION(x,y,z) (((x) << KVER_MAJ_SHIFT) | ((y) << KVER_MIN_SHIFT) | (z))
 #define OLDEST_VERSION		KERNEL_VERSION(2, 6, 15) /* linux-2.6.15 */
-#define LATEST_VERSION		KERNEL_VERSION(5, 4, 8) /* linux-5.4.8 */
+#define LATEST_VERSION		KERNEL_VERSION(6, 8, 4)  /* linux-6.8.4 */
+
+/*
+ * for printk caller_id support
+ */
+#define PID_CHARS_MAX 16	/* Max Number of PID characters */
+#define PID_CHARS_DEFAULT 8	/* Default number of PID characters */
 
 /*
  * vmcoreinfo in /proc/vmcore
  */
-#define VMCOREINFO_BYTES		(4096)
 #define FILENAME_VMCOREINFO		"/tmp/vmcoreinfoXXXXXX"
 
 /*
@@ -533,8 +541,6 @@ do { \
  * The value of dependence on machine
  */
 #define PAGE_OFFSET		(info->page_offset)
-#define VMALLOC_START		(info->vmalloc_start)
-#define VMALLOC_END		(info->vmalloc_end)
 #define VMEMMAP_START		(info->vmemmap_start)
 #define VMEMMAP_END		(info->vmemmap_end)
 #define PMASK			(0x7ffffffffffff000UL)
@@ -676,6 +682,12 @@ unsigned long get_kvbase_arm64(void);
 #define REGION_SHIFT            (60UL)
 #define VMEMMAP_REGION_ID       (0xfUL)
 
+/*
+ * If PAGE_PTE is set, then it's a leaf PTE for hugepage
+ */
+#define PAGE_PTE (1UL << 62)
+#define IS_HUGEPAGE(pte) (!!((pte) & PAGE_PTE))
+
 /* 4-level page table support */
 
 /* 4K pagesize */
@@ -739,12 +751,13 @@ unsigned long get_kvbase_arm64(void);
 /*
  * Supported MMU types
  */
-#define STD_MMU         0x0
+#define MMU_TYPE_STD         0x0
 /*
  * The flag bit for radix MMU in cpu_spec.mmu_features
- * in the kernel. Use the same flag here.
+ * in the kernel (MMU_FTR_TYPE_RADIX).
+ * Use the same flag here.
  */
-#define RADIX_MMU       0x40
+#define MMU_TYPE_RADIX       0x40
 
 
 #define PGD_MASK_L4		\
@@ -958,6 +971,163 @@ typedef unsigned long pgd_t;
 
 #endif          /* sparc64 */
 
+#ifdef __mips64__ /* mips64 */
+#define KVBASE			PAGE_OFFSET
+
+#ifndef _XKPHYS_START_ADDR
+#define _XKPHYS_START_ADDR	0x9000000000000000ULL /* _LOONGSON_XKPHYS_START_ADDR */
+#endif
+
+#ifndef _XKPHYS_END_ADDR
+#define _XKPHYS_END_ADDR	0xc000000000000000ULL /* _LOONGSON_XKPHYS_END_ADDR */
+#endif
+
+#ifndef _PAGE_OFFSET
+#define _PAGE_OFFSET		0x9800000000000000ULL
+#endif
+
+#define _SECTION_SIZE_BITS	(28)
+
+#ifndef _MAX_PHYSMEM_BITS
+#define _MAX_PHYSMEM_BITS	(48)
+#endif
+
+#define _PAGE_PRESENT		(1 << 0)
+#define _PAGE_HUGE		(1 << 4)
+
+typedef unsigned long pte_t;
+typedef unsigned long pmd_t;
+typedef unsigned long pgd_t;
+
+#define PAGE_MASK		(~(PAGESIZE() - 1))
+#define PMD_MASK		(~(PMD_SIZE - 1))
+#define PMD_SHIFT		((PAGESHIFT() - 3) * 2 + 3)
+#define PMD_SIZE		(1UL << PMD_SHIFT)
+#define PGDIR_SHIFT		((PAGESHIFT() - 3) * 3 + 3)
+#define PTRS_PER_PTE		(1 << (PAGESHIFT() - 3))
+#define PTRS_PER_PMD		PTRS_PER_PTE
+#define PTRS_PER_PGD		PTRS_PER_PTE
+
+#define pte_index(vaddr)		(((vaddr) >> PAGESHIFT()) & (PTRS_PER_PTE - 1))
+#define pmd_page_paddr(pmd)		(pmd & (int32_t)PAGE_MASK)
+#define pte_offset(dir, vaddr)		((pte_t *)pmd_page_paddr((*dir)) + pte_index(vaddr))
+
+#define pmd_index(vaddr)		(((vaddr) >> PMD_SHIFT) & (PTRS_PER_PMD - 1))
+#define pgd_page_paddr(pgd)		(pgd & (int32_t)PAGE_MASK)
+#define pmd_offset(pgd, vaddr)		((pmd_t *)pgd_page_paddr((*pgd)) + pmd_index(vaddr))
+
+#define pgd_index(vaddr)		(((vaddr) >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
+#define pgd_offset(pgdir, vaddr)	((pgd_t *)(pgdir) + pgd_index(vaddr))
+
+#endif		/* mips64 */
+
+#ifdef __loongarch64__
+#define KVBASE			(0x8000000000000000ULL)
+#define _PAGE_OFFSET		(0x9000000000000000ULL)
+#define _XKPRANGE		(0x8000000000000000ULL)
+#define _XKVRANGE		(0xc000000000000000ULL)
+#define _SECTION_SIZE_BITS	(29)
+#define _MAX_PHYSMEM_BITS	(48)
+#define _PAGE_HUGE		(1 << 6) /* HUGE is a PMD bit */
+#define _PAGE_PRESENT		(1 << 7)
+
+typedef unsigned long pte_t;
+typedef unsigned long pmd_t;
+typedef unsigned long pgd_t;
+
+#define PAGE_MASK		(~(PAGESIZE() - 1))
+#define PMD_MASK		(~(PMD_SIZE - 1))
+#define PMD_SHIFT		((PAGESHIFT() - 3) * 2 + 3)
+#define PMD_SIZE		(1UL << PMD_SHIFT)
+#define PGDIR_SHIFT		((PAGESHIFT() - 3) * 3 + 3)
+#define PTRS_PER_PTE		(1 << (PAGESHIFT() - 3))
+#define PTRS_PER_PMD		PTRS_PER_PTE
+#define PTRS_PER_PGD		PTRS_PER_PTE
+
+#define pte_index(vaddr)		(((vaddr) >> PAGESHIFT()) & (PTRS_PER_PTE - 1))
+#define pmd_page_paddr(pmd)		(pmd & (int32_t)PAGE_MASK)
+#define pte_offset(dir, vaddr)		((pte_t *)pmd_page_paddr((*dir)) + pte_index(vaddr))
+
+#define pmd_index(vaddr)		(((vaddr) >> PMD_SHIFT) & (PTRS_PER_PMD - 1))
+#define pgd_page_paddr(pgd)		(pgd & (int32_t)PAGE_MASK)
+#define pmd_offset(pgd, vaddr)		((pmd_t *)pgd_page_paddr((*pgd)) + pmd_index(vaddr))
+
+#define pgd_index(vaddr)		(((vaddr) >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
+#define pgd_offset(pgdir, vaddr)	((pgd_t *)(pgdir) + pgd_index(vaddr))
+
+#endif /* loongarch64 */
+
+#ifdef __riscv64__
+/*
+ * Referencing the riscv64_is_kvaddr() in Crash-utility,
+ * set the vmemmap start address as the lowest kernel virtual base.
+ */
+#define KVBASE			(NUMBER(vmemmap_start))
+#define _SECTION_SIZE_BITS	(27)
+#define _MAX_PHYSMEM_BITS	(56)
+
+typedef ulong pgd_t;
+typedef ulong p4d_t;
+typedef ulong pud_t;
+typedef ulong pmd_t;
+typedef ulong pte_t;
+
+/* arch/riscv/include/asm/pgtable-64.h */
+
+#define PGD_SHIFT_L3		(30)
+#define PGD_SHIFT_L4		(39)
+#define PGD_SHIFT_L5		(48)
+
+#define P4D_SHIFT		(39)
+#define PUD_SHIFT		(30)
+#define PMD_SHIFT		(21)
+
+#define PTRS_PER_PGD		(512)
+#define PTRS_PER_P4D		(512)
+#define PTRS_PER_PUD		(512)
+#define PTRS_PER_PMD		(512)
+#define PTRS_PER_PTE		(512)
+
+/*
+ * 3/4/5-levels pg indexs
+ */
+#define pgd_index_l3(addr)	(((addr) >> PGD_SHIFT_L3) & (PTRS_PER_PGD - 1))
+#define pgd_index_l4(addr)	(((addr) >> PGD_SHIFT_L4) & (PTRS_PER_PGD - 1))
+#define pgd_index_l5(addr)	(((addr) >> PGD_SHIFT_L5) & (PTRS_PER_PGD - 1))
+#define p4d_index(addr)		(((addr) >> P4D_SHIFT) & (PTRS_PER_P4D - 1))
+#define pud_index(addr)		(((addr) >> PUD_SHIFT) & (PTRS_PER_PUD - 1))
+#define pmd_index(addr)		(((addr) >> PMD_SHIFT) & (PTRS_PER_PMD - 1))
+#define pte_index(addr)		(((addr) >> PAGESHIFT()) & (PTRS_PER_PTE - 1))
+
+/* arch/riscv/include/asm/pgtable-bits.h */
+
+#define _PAGE_PRESENT	(1 << 0)
+#define _PAGE_READ	(1 << 1)	/* Readable */
+#define _PAGE_WRITE	(1 << 2)	/* Writable */
+#define _PAGE_EXEC	(1 << 3)	/* Executable */
+#define _PAGE_USER	(1 << 4)	/* User */
+#define _PAGE_GLOBAL	(1 << 5)	/* Global */
+#define _PAGE_ACCESSED	(1 << 6)	/* Set by hardware on any access */
+#define _PAGE_DIRTY	(1 << 7)	/* Set by hardware on any write */
+#define _PAGE_SOFT	(1 << 8)	/* Reserved for software */
+
+#define _PAGE_PFN_SHIFT	(10)
+#define _PAGE_LEAF	(_PAGE_READ | _PAGE_WRITE | _PAGE_EXEC)
+
+/*
+ * Mask for bit 0~53(PROT and PPN) of PTE
+ * 63 6261  60    54  53 10  9 8 7 6 5 4 3 2 1 0
+ * N  PBMT  Reserved  P P N  RSW D A G U X W R V
+ */
+#define PTE_PFN_PROT_MASK	0x3FFFFFFFFFFFFF
+
+#define VA_BITS_SV39	(39)
+#define VA_BITS_SV48	(48)
+#define VA_BITS_SV57	(57)
+
+#endif /* riscv64 */
+
+
 /*
  * The function of dependence on machine
  */
@@ -1070,6 +1240,7 @@ unsigned long long vaddr_to_paddr_ppc(unsigned long vaddr);
 #ifdef __s390x__ /* s390x */
 int get_machdep_info_s390x(void);
 unsigned long long vaddr_to_paddr_s390x(unsigned long vaddr);
+unsigned long paddr_to_vaddr_s390x(unsigned long long paddr);
 int is_iomem_phys_addr_s390x(unsigned long addr);
 #define find_vmemmap()		stub_false()
 #define get_phys_base()		stub_true()
@@ -1077,7 +1248,7 @@ int is_iomem_phys_addr_s390x(unsigned long addr);
 #define get_versiondep_info()	stub_true()
 #define get_kaslr_offset(X)	get_kaslr_offset_general(X)
 #define vaddr_to_paddr(X)	vaddr_to_paddr_s390x(X)
-#define paddr_to_vaddr(X)	paddr_to_vaddr_general(X)
+#define paddr_to_vaddr(X)	paddr_to_vaddr_s390x(X)
 #define is_phys_addr(X)		is_iomem_phys_addr_s390x(X)
 #define arch_crashkernel_mem_size()	stub_false()
 #endif          /* s390x */
@@ -1106,11 +1277,60 @@ unsigned long long vaddr_to_paddr_sparc64(unsigned long vaddr);
 #define get_machdep_info()      TRUE
 #define get_phys_base()         get_phys_base_sparc64()
 #define get_versiondep_info()   get_versiondep_info_sparc64()
+#define get_kaslr_offset(X)     stub_false()
 #define vaddr_to_paddr(X)       vaddr_to_paddr_sparc64(X)
 #define paddr_to_vaddr(X)	paddr_to_vaddr_general(X)
 #define is_phys_addr(X)		stub_true_ul(X)
 #define arch_crashkernel_mem_size()	stub_false()
 #endif		/* sparc64 */
+
+#ifdef __mips64__ /* mips64 */
+int get_phys_base_mips64(void);
+int get_machdep_info_mips64(void);
+int get_versiondep_info_mips64(void);
+unsigned long long vaddr_to_paddr_mips64(unsigned long vaddr);
+#define find_vmemmap()		stub_false()
+#define get_phys_base() 	get_phys_base_mips64()
+#define get_machdep_info()	get_machdep_info_mips64()
+#define get_versiondep_info()	get_versiondep_info_mips64()
+#define get_kaslr_offset(X)	stub_false()
+#define vaddr_to_paddr(X)	vaddr_to_paddr_mips64(X)
+#define paddr_to_vaddr(X)	paddr_to_vaddr_general(X)
+#define is_phys_addr(X) 	stub_true_ul(X)
+#define arch_crashkernel_mem_size()	stub_false()
+#endif		/* mips64 */
+
+#ifdef __loongarch64__ /* loongarch64 */
+int get_phys_base_loongarch64(void);
+int get_machdep_info_loongarch64(void);
+int get_versiondep_info_loongarch64(void);
+unsigned long long vaddr_to_paddr_loongarch64(unsigned long vaddr);
+#define find_vmemmap()		stub_false()
+#define get_phys_base()		get_phys_base_loongarch64()
+#define get_machdep_info()	get_machdep_info_loongarch64()
+#define get_versiondep_info()	get_versiondep_info_loongarch64()
+#define get_kaslr_offset(X)	stub_false()
+#define vaddr_to_paddr(X)	vaddr_to_paddr_loongarch64(X)
+#define paddr_to_vaddr(X)	paddr_to_vaddr_general(X)
+#define is_phys_addr(X)		stub_true_ul(X)
+#define arch_crashkernel_mem_size()	stub_false()
+#endif /* loongarch64 */
+
+#ifdef __riscv64__
+int get_phys_base_riscv64(void);
+int get_machdep_info_riscv64(void);
+unsigned long long vaddr_to_paddr_riscv64(unsigned long vaddr);
+#define paddr_to_vaddr_riscv64(X) ((X) + PAGE_OFFSET - info->phys_base)
+#define find_vmemmap()		stub_false()
+#define get_phys_base()		get_phys_base_riscv64()
+#define get_machdep_info()	get_machdep_info_riscv64()
+#define get_versiondep_info()	stub_true()
+#define get_kaslr_offset(X)	stub_false()
+#define vaddr_to_paddr(X)	vaddr_to_paddr_riscv64(X)
+#define paddr_to_vaddr(X)	paddr_to_vaddr_riscv64(X)
+#define is_phys_addr(X)		stub_true_ul(X)
+#define arch_crashkernel_mem_size()	stub_false()
+#endif /* riscv64 */
 
 typedef unsigned long long mdf_pfn_t;
 
@@ -1262,7 +1482,7 @@ struct splitting_info {
 	mdf_pfn_t		end_pfn;
 	off_t			offset_eraseinfo;
 	unsigned long		size_eraseinfo;
-} splitting_info_t;
+};
 
 struct parallel_info {
 	int			fd_memory;
@@ -1275,7 +1495,10 @@ struct parallel_info {
 #ifdef USELZO
 	lzo_bytep		wrkmem;
 #endif
-} parallel_info_t;
+#ifdef USEZSTD
+	ZSTD_CCtx		*zstd_cctx;
+#endif
+};
 
 struct ppc64_vmemmap {
 	unsigned long		phys;
@@ -1294,6 +1517,7 @@ struct DumpInfo {
 	int		max_dump_level;      /* maximum dump level */
 	int		num_dump_level;      /* number of dump level */
 	int		array_dump_level[NUM_ARRAY_DUMP_LEVEL];
+	off_t		size_limit;          /* dump file size limit */
 	int		flag_compress;       /* flag of compression */
 	int		flag_lzo_support;    /* flag of LZO compression support */
 	int		flag_elf_dumpfile;   /* flag of creating ELF dumpfile */
@@ -1301,6 +1525,7 @@ struct DumpInfo {
 	int		flag_read_vmcoreinfo;    /* flag of reading vmcoreinfo file */
 	int		flag_show_usage;     /* flag of showing usage */
 	int		flag_show_version;   /* flag of showing version */
+	int		flag_check_params;   /* only check parameters */
 	int		flag_flatten;        /* flag of outputting flattened
 						format to a standard out */
 	int		flag_rearrange;      /* flag of creating dumpfile from
@@ -1321,6 +1546,7 @@ struct DumpInfo {
 	int		flag_vmemmap;        /* kernel supports vmemmap address space */
 	int		flag_excludevm;      /* -e - excluding unused vmemmap pages */
 	int		flag_use_count;      /* _refcount is named _count in struct page */
+	int		flag_dry_run;        /* do not create a vmcore file */
 	unsigned long	vaddr_for_vtop;      /* virtual address for debugging */
 	long		page_size;           /* size of page */
 	long		page_shift;
@@ -1339,6 +1565,12 @@ struct DumpInfo {
 	int		vmemmap_cnt;
 	struct ppc64_vmemmap	*vmemmap_list;
 	unsigned long	kaslr_offset;
+
+	/*
+	 * for compound page
+	 */
+	unsigned int	compound_order_offset;
+	unsigned int	compound_dtor_offset;
 
 	/*
 	 * page table info for ppc64
@@ -1534,6 +1766,14 @@ struct DumpInfo {
 	pthread_mutex_t current_pfn_mutex;
 	pthread_mutex_t page_data_mutex;
 	pthread_mutex_t filter_mutex;
+
+#ifdef __s390x__ /* s390x */
+	unsigned long identity_map_base;
+	unsigned long kvbase;
+	unsigned long __kaslr_offset_phys;
+	unsigned long amode31_start;
+	unsigned long amode31_end;
+#endif
 };
 extern struct DumpInfo		*info;
 
@@ -1603,6 +1843,7 @@ struct symbol_table {
 	unsigned long long	pgdat_list;
 	unsigned long long	contig_page_data;
 	unsigned long long	prb;
+	unsigned long long	clear_seq;
 	unsigned long long	log_buf;
 	unsigned long long	log_buf_len;
 	unsigned long long	log_end;
@@ -1696,6 +1937,7 @@ struct size_table {
 	long	printk_ringbuffer;
 	long	prb_desc;
 	long	printk_info;
+	long	latched_seq;
 
 	/*
 	 * for Xen extraction
@@ -1707,6 +1949,7 @@ struct size_table {
 	 * for loading module symbol data
 	 */
 	long	module;
+	long	module_memory;
 
 	/*
 	 * for sadump
@@ -1727,6 +1970,8 @@ struct size_table {
 	long	cpu_spec;
 
 	long	pageflags;
+
+	long	uts_namespace;
 };
 
 struct offset_table {
@@ -1741,6 +1986,10 @@ struct offset_table {
 		long	compound_order;
 		long	compound_head;
 	} page;
+	struct folio {
+		long	_folio_dtor;
+		long	_folio_order;
+	} folio;
 	struct mem_section {
 		long	section_mem_map;
 	} mem_section;
@@ -1803,7 +2052,13 @@ struct offset_table {
 		long	num_symtab;
 		long	symtab;
 		long	strtab;
+		long	mem;
 	} module;
+
+	struct module_memory {
+		long	base;
+		long	size;
+	} module_memory;
 
 	/*
 	 * for loading elf_prstaus symbol data
@@ -1866,10 +2121,17 @@ struct offset_table {
 		long	p_memsz;
 	} elf64_phdr;
 
+	/*
+	 * The caller_id was added by the Linux 5.1 Kernel to hold
+	 * the Thread id or CPU id of the caller adding a printk
+	 * dmesg to the ring buffer. As such older versions of the
+	 * kernel can ignore this field as it won't be filled in.
+	 */
 	struct printk_log_s {
 		long ts_nsec;
 		long len;
 		long text_len;
+		long caller_id;
 	} printk_log;
 
 	/*
@@ -1918,6 +2180,10 @@ struct offset_table {
 		long counter;
 	} atomic_long_t;
 
+	struct latched_seq_s {
+		long val;
+	} latched_seq;
+
 	/*
 	 * symbols on ppc64 arch
 	 */
@@ -1934,6 +2200,10 @@ struct offset_table {
 	struct cpu_spec_s {
 		long	mmu_features;
 	} cpu_spec;
+
+	struct uts_namespace_s {
+		long	name;
+	} uts_namespace;
 };
 
 /*
@@ -1982,6 +2252,7 @@ struct number_table {
 	long	PG_buddy;
 	long	PG_slab;
 	long    PG_hwpoison;
+	long    PG_hugetlb;
 
 	long	PAGE_BUDDY_MAPCOUNT_VALUE;
 	long	PAGE_OFFLINE_MAPCOUNT_VALUE;
@@ -1990,12 +2261,29 @@ struct number_table {
 	long    HUGETLB_PAGE_DTOR;
 	long	phys_base;
 	long	KERNEL_IMAGE_SIZE;
+
+	unsigned long vmalloc_start;
+
 #ifdef __aarch64__
 	long 	VA_BITS;
 	long	TCR_EL1_T1SZ;
 	unsigned long	PHYS_OFFSET;
 	unsigned long	kimage_voffset;
 #endif
+#ifdef __riscv64__
+	long va_bits;
+	unsigned long phys_ram_base;
+	unsigned long page_offset;
+	unsigned long vmalloc_end;
+	unsigned long vmemmap_start;
+	unsigned long vmemmap_end;
+	unsigned long modules_vaddr;
+	unsigned long modules_end;
+	unsigned long kernel_link_addr;
+	unsigned long va_kernel_pa_offset;
+#endif
+
+	unsigned long RADIX_MMU;
 };
 
 struct srcfile_table {
@@ -2062,8 +2350,8 @@ struct memory_range {
 };
 
 #define CRASH_RESERVED_MEM_NR   8
-struct memory_range crash_reserved_mem[CRASH_RESERVED_MEM_NR];
-int crash_reserved_mem_nr;
+extern struct memory_range crash_reserved_mem[CRASH_RESERVED_MEM_NR];
+extern int crash_reserved_mem_nr;
 
 unsigned long read_vmcoreinfo_symbol(char *str_symbol);
 int readmem(int type_addr, unsigned long long addr, void *bufptr, size_t size);
@@ -2222,6 +2510,24 @@ int get_xen_info_ia64(void);
 #define get_xen_info_arch(X) FALSE
 #endif	/* sparc64 */
 
+#ifdef __mips64__ /* mips64 */
+#define kvtop_xen(X)	FALSE
+#define get_xen_basic_info_arch(X) FALSE
+#define get_xen_info_arch(X) FALSE
+#endif	/* mips64 */
+
+#ifdef __loongarch64__ /* loongarch64 */
+#define kvtop_xen(X)	FALSE
+#define get_xen_basic_info_arch(X) FALSE
+#define get_xen_info_arch(X) FALSE
+#endif /* loongarch64 */
+
+#ifdef __riscv64__ /* riscv64 */
+#define kvtop_xen(X)	FALSE
+#define get_xen_basic_info_arch(X) FALSE
+#define get_xen_info_arch(X) FALSE
+#endif /* riscv64 */
+
 struct cycle {
 	mdf_pfn_t start_pfn;
 	mdf_pfn_t end_pfn;
@@ -2241,6 +2547,9 @@ is_on(char *bitmap, mdf_pfn_t i)
 static inline int
 is_cyclic_region(mdf_pfn_t pfn, struct cycle *cycle)
 {
+	if (!cycle)
+		return FALSE;
+
 	if (pfn < cycle->start_pfn || cycle->end_pfn <= pfn)
 		return FALSE;
 	else
@@ -2394,11 +2703,13 @@ struct elf_prstatus {
 #define OPT_HELP                'h'
 #define OPT_READ_VMCOREINFO     'i'
 #define OPT_COMPRESS_LZO        'l'
+#define OPT_SIZE_LIMIT          'L'
 #define OPT_COMPRESS_SNAPPY     'p'
 #define OPT_REARRANGE           'R'
 #define OPT_VERSION             'v'
 #define OPT_EXCLUDE_XEN_DOM     'X'
 #define OPT_VMLINUX             'x'
+#define OPT_COMPRESS_ZSTD       'z'
 #define OPT_START               256
 #define OPT_SPLIT               OPT_START+0
 #define OPT_REASSEMBLE          OPT_START+1
@@ -2418,6 +2729,9 @@ struct elf_prstatus {
 #define OPT_WORKING_DIR         OPT_START+15
 #define OPT_NUM_THREADS         OPT_START+16
 #define OPT_PARTIAL_DMESG       OPT_START+17
+#define OPT_CHECK_PARAMS        OPT_START+18
+#define OPT_DRY_RUN             OPT_START+19
+#define OPT_SHOW_STATS          OPT_START+20
 
 /*
  * Function Prototype.
@@ -2443,8 +2757,10 @@ ulong htol(char *s, int flags);
 int hexadecimal(char *s, int count);
 int decimal(char *s, int count);
 int file_exists(char *file);
-
+int write_and_check_space(int fd, void *buf, size_t buf_size,
+			  const char* desc, const char *file_name);
 int open_dump_file(void);
 int dump_lockless_dmesg(void);
+unsigned long long memparse(char *ptr, char **retptr);
 
 #endif /* MAKEDUMPFILE_H */

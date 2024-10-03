@@ -1,4 +1,4 @@
-.TH MAKEDUMPFILE 8 "16 Jan 2020" "makedumpfile v1.6.7" "Linux System Administrator's Manual"
+.TH MAKEDUMPFILE 8 "@DATE@" "makedumpfile v@VERSION@" "Linux System Administrator's Manual"
 .SH NAME
 makedumpfile \- make a small dumpfile of kdump
 .SH SYNOPSIS
@@ -132,10 +132,19 @@ configuration, you need to use --diskset option.
 .SH OPTIONS
 
 .TP
-\fB\-c,\-l,\-p\fR
-Compress dump data by each page using zlib for -c option, lzo for -l
-option or snappy for -p option.
-(-l option needs USELZO=on and -p option needs USESNAPPY=on when building)
+\fB\-c,\-l,\-p,\-z\fR
+Compress dump data by the page using the following compression library respectively:
+.br
+	\fB-c\fR : zlib
+.br
+	\fB-l\fR : lzo
+.br
+	\fB-p\fR : snappy
+.br
+	\fB-z\fR : zstd
+.br
+(-l, -p and -z option need USELZO=on, USESNAPPY=on and USEZSTD=on respectively
+when building makedumpfile)
 .br
 A user cannot specify this option with \-E option, because the ELF format does
 not support compressed data.
@@ -157,9 +166,10 @@ will be effective if you specify domain-0's \fIvmlinux\fR with \-x option.
 Then the pages are excluded only from domain-0.
 .br
 If specifying multiple dump_levels with the delimiter ',', makedumpfile retries
-to create a \fIDUMPFILE\fR by other dump_level when "No space on device" error
-happens. For example, if dump_level is "11,31" and makedumpfile fails
-by dump_level 11, makedumpfile retries it by dump_level 31.
+to create \fIDUMPFILE\fR using the next dump_level when the size of a dumpfile
+exceeds the limit specified with '-L' or when a "No space on device" error
+happens. For example, if dump_level is "11,31" and makedumpfile fails with
+dump_level 11, makedumpfile retries with dump_level 31.
 .br
 .B Example:
 .br
@@ -221,6 +231,11 @@ Here is the all combinations of the bits.
     30 |      |   X   |   X   |  X   |  X
     31 |  X   |   X   |   X   |  X   |  X
 
+.TP
+\fB\-L\fR \fISIZE\fR
+Limit the size of the output file to \fISIZE\fR bytes. An incomplete
+\fIDUMPFILE\fR or \fILOGFILE\fR is written if the size would otherwise exceed
+\fISIZE\fR.
 
 .TP
 \fB\-E\fR
@@ -631,6 +646,22 @@ Show help message and LZO/snappy support status (enabled/disabled).
 .TP
 \fB\-v\fR
 Show the version of makedumpfile.
+
+.TP
+\fB\-\-check-params\fR
+Only check whether the command-line parameters are valid or not, and exit.
+Preferable to be given as the first parameter.
+
+.TP
+\fB\-\-dry-run\fR
+Do not write the output dump file while still performing operations specified
+by other options.
+This option cannot be used with the --dump-dmesg, --reassemble and -g options.
+
+.TP
+\fB\-\-show-stats\fR
+Display report messages. This is an alternative to enabling bit 4 in the level
+provided to --message-level.
 
 .SH ENVIRONMENT VARIABLES
 
