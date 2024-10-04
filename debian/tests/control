@@ -1,3 +1,0 @@
-Tests: crash
-Restrictions: breaks-testbed, needs-root, isolation-machine, needs-reboot, needs-recommends
-Depends: @, file
