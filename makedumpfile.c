@@ -12101,10 +12101,10 @@ static struct option longopts[] = {
 	{"splitblock-size", required_argument, NULL, OPT_SPLITBLOCK_SIZE},
 	{"work-dir", required_argument, NULL, OPT_WORKING_DIR},
 	{"num-threads", required_argument, NULL, OPT_NUM_THREADS},
-	{"private-page-filter", required_argument, NULL, OPT_PRIVATE_PAGE_FILTER},
 	{"check-params", no_argument, NULL, OPT_CHECK_PARAMS},
 	{"dry-run", no_argument, NULL, OPT_DRY_RUN},
 	{"show-stats", no_argument, NULL, OPT_SHOW_STATS},
+	{"private-page-filter", required_argument, NULL, OPT_PRIVATE_PAGE_FILTER},
 	{0, 0, 0, 0}
 };
 

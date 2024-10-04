@@ -2730,10 +2730,10 @@ struct elf_prstatus {
 #define OPT_WORKING_DIR         OPT_START+15
 #define OPT_NUM_THREADS         OPT_START+16
 #define OPT_PARTIAL_DMESG       OPT_START+17
-#define OPT_PRIVATE_PAGE_FILTER OPT_START+18
 #define OPT_CHECK_PARAMS        OPT_START+18
 #define OPT_DRY_RUN             OPT_START+19
 #define OPT_SHOW_STATS          OPT_START+20
+#define OPT_PRIVATE_PAGE_FILTER OPT_START+21
 
 /*
  * Function Prototype.
