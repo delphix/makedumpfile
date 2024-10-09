@@ -6,11 +6,14 @@
 * REQUIREMENTS
   Please download the following library file and install it exactly as below;
   do NOT use "make install".
+
   - elfutils-0.144.tar.gz
+
     The "make install" of elfutils installs some commands (ld, readelf, etc.),
     and compiling problems sometimes happen due to using the installed
     commands. To install only the library & header files, use the following
     method:
+
      # tar -zxvf elfutils-0.144.tar.gz
      # cd elfutils-0.144
      # ./configure
@@ -18,6 +21,7 @@
      #
      # mkdir /usr/local/include/elfutils/
      # cp ./libdw/libdw.h   /usr/local/include/elfutils/libdw.h
+     # cp ./libdwfl/libdwfl.h /usr/local/include/elfutils/libdwfl.h
      # cp ./libdw/dwarf.h   /usr/local/include/dwarf.h
      # cp ./libelf/libelf.h /usr/local/include/libelf.h
      # cp ./libelf/gelf.h   /usr/local/include/gelf.h
@@ -26,29 +30,42 @@
      # cp ./libdw/libdw.a   /usr/local/lib/libdw.a
      # cp ./libasm/libasm.a /usr/local/lib/libasm.a
      # cp ./libebl/libebl.a /usr/local/lib/libebl.a
-     #
 
 * BUILD & INSTALL
   1.Get the latest makedumpfile from the following site:
-    https://sourceforge.net/projects/makedumpfile/
+    https://github.com/makedumpfile/makedumpfile
+
   2.Uncompress the tar file:
     # tar -zxvf makedumpfile-x.y.z.tar.gz
+
   3.Enter the makedumpfile subdirectory:
     # cd makedumpfile-x.y.z
+
   4.Build, and install:
     # make; make install
-  5.Build for a different architecture than the host :
+
+  - Build with dynamic libraries, without -static option:
+    $ make LINKTYPE=dynamic
+
+  - Build for a different architecture than the host:
     # make TARGET=<arch> ; make install
     where <arch> is the 'uname -m' of the target architecture. 
     The user has to set the environment variable CC to appropriate
     compiler for the target architecture.
-  6.Build with lzo support:
+
+  - Build with lzo support:
     # make USELZO=on ; make install
     The user has to prepare lzo library.
-  7.Build with snappy support:
+
+  - Build with snappy support:
     # make USESNAPPY=on ; make install
     The user has to prepare snappy library.
-  8.Build the extension module for --eppic option.
+
+  - Build with zstd support:
+    # make USEZSTD=on ; make install
+    The user has to prepare zstd library.
+
+  - Build the extension module for --eppic option.
     # make eppic_makedumpfile.so
     The user has to prepare eppic library from the following site:
     http://code.google.com/p/eppic/
@@ -133,6 +150,30 @@
   5.2    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
   5.3    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
   5.4    | OK | ** |    |    |    | ** |    | -- | OK | OK |    |    |
+  5.5    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.6    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.7    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.8    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.9    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.10   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.11   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.12   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.13   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.14   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.15   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.16   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.17   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.18   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  5.19   |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.0    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.1    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.2    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.3    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.4    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.5    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.6    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.7    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
+  6.8    |    | ** |    |    |    | ** |    | -- |    | OK |    |    |
 
   OK    : Support.
   --    : Not support.
@@ -197,14 +238,37 @@
        This is a workaround for some linux distributions which does
        not contain static library files needed by makedumpfile.
 
+  003: How can I verify the GPG signature of a tag?
+
+       The public key to verify it is in the makedumpfile repository and
+       tagged as "pubkey*":
+
+         $ git tag | grep pubkey
+         pubkey
+         pubkey2
+         pubkey3
+         pubkey4
+
+       As of September 2022, the pubkey4 is being used.
+       You can import it and verify a tag like this:
+
+         $ git cat-file blob pubkey4 | gpg --import
+         $ git tag -v 1.7.1
 
 * REFERENCES
-  https://sourceforge.net/projects/makedumpfile/
-  http://lists.infradead.org/pipermail/kexec/
-  https://lists.linux-foundation.org/pipermail/fastboot/
+  - The makedumpfile project page
+    https://github.com/makedumpfile/makedumpfile
+
+  - The kexec mailing list archives
+    http://lists.infradead.org/pipermail/kexec/
+  - The fastboot mailing list archives
+    https://lists.linux-foundation.org/pipermail/fastboot/
 
 * BUG REPORT
   If finding some bugs, please send the information to the following:
   Kazuhito Hagio <k-hagio-ab@nec.com>
   kexec-ml <kexec@lists.infradead.org>
+
+  Please refer to the project page's wiki:
+  https://github.com/makedumpfile/makedumpfile/wiki
 

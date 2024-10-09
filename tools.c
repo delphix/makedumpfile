@@ -147,7 +147,6 @@ next:
 			str[i] = NULLCHAR;
 			/* keep falling... */
 		case NULLCHAR:
-			argv[j] = NULLCHAR;
 			return(j);
 		}
 	}
@@ -276,19 +275,27 @@ strip_ending_whitespace(char *line)
 char *
 strip_beginning_whitespace(char *line)
 {
-	char buf[BUFSIZE];
+	size_t len;
 	char *p;
 
-	if (line == NULL || strlen(line) == 0)
-		return(line);
+	if (line == NULL)
+		return line;
 
-	strcpy(buf, line);
-	p = &buf[0];
-	while (*p == ' ' || *p == '\t')
+	len = strlen(line);
+
+	if (len == 0)
+		return line;
+
+	p = line;
+	while (whitespace(*p)) {
 		p++;
-	strcpy(line, p);
+		len--;
+	}
+	/* for memmove src and dest may overlap */
+	memmove(line, p, len);
+	line[len + 1] = '\0';
 
-	return(line);
+	return line;
 }
 
 /*
@@ -455,37 +462,6 @@ fixup_percent(char *s)
 	*p1 = '%';
 
 	return s;
-}
-
-/*
- * Append a two-character string to a number to make 1, 2, 3 and 4 into
- * 1st, 2nd, 3rd, 4th, and so on...
- */
-char *
-ordinal(ulong val, char *buf)
-{
-	char *p1;
-
-	sprintf(buf, "%ld", val);
-	p1 = &buf[strlen(buf)-1];
-
-	switch (*p1)
-	{
-	case '1':
-		strcat(buf, "st");
-		break;
-	case '2':
-		strcat(buf, "nd");
-		break;
-	case '3':
-		strcat(buf, "rd");
-		break;
-	default:
-		strcat(buf, "th");
-		break;
-	}
-
-	return buf;
 }
 
 /*
@@ -763,4 +739,44 @@ hexadecimal_only(char *s, int count)
 	}
 
 	return only;
+}
+
+/*
+ * Parse a string of [size[KMG]@]offset[KMG]
+ * Import from Linux kernel(lib/cmdline.c)
+ */
+unsigned long long memparse(char *ptr, char **retptr)
+{
+	char *endptr;
+
+	unsigned long long ret = strtoull(ptr, &endptr, 0);
+
+	switch (*endptr) {
+	case 'E':
+	case 'e':
+		ret <<= 10;
+	case 'P':
+	case 'p':
+		ret <<= 10;
+	case 'T':
+	case 't':
+		ret <<= 10;
+	case 'G':
+	case 'g':
+		ret <<= 10;
+	case 'M':
+	case 'm':
+		ret <<= 10;
+	case 'K':
+	case 'k':
+		ret <<= 10;
+		endptr++;
+	default:
+		break;
+	}
+
+	if (retptr)
+		*retptr = endptr;
+
+	return ret;
 }

@@ -1,2 +1,0 @@
-mv_conffile /etc/default/grub.d/kdump-tools.default /etc/default/grub.d/kdump-tools.cfg 1:1.6.1-2~ kdump-tools
-rm_conffile /etc/default/grub.d/kdump-tools..ppc64el 1:1.6.1-2~ kdump-tools

@@ -1,10 +1,1 @@
 0002-adapt-makefile-to-debian.patch
-0003-align_PMD_SECTION_MASK_with_PHYS_MASK.patch
-0004-PATCH-arm64-Add-support-for-ARMv8.2-LPA-52-bit-PA-su.patch
-0005-PATCH-1-3-Use-vmcoreinfo-note-in-proc-kcore-for-mem-.patch
-0006-PATCH-2-3-arm64-Make-use-of-NUMBER-VA_BITS-in-vmcore.patch
-0007-PATCH-3-3-arm64-support-flipped-VA-and-52-bit-kernel.patch
-0008-PATCH-Retrieve-MAX_PHYSMEM_BITS-from-vmcoreinfo.patch
-0009-PATCH-1-2-printk-add-support-for-lockless-ringbuffer.patch
-0010-PATCH-2-2-printk-use-committed-finalized-state-value.patch
-lp1970672-PATCH-Increase-SECTION_MAP_LAST_BIT-to-5.patch

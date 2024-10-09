@@ -1,68 +1,127 @@
-makedumpfile (1:1.6.7-1ubuntu2.5) focal; urgency=medium
+makedumpfile (1:1.7.5-1) unstable; urgency=medium
 
-  * makedumpfile falls back to cp with 5.12 kernel (LP: #1970672)
-    - can also fail with __vtop4_x86_64: Can't get a valid pmd_pte.
-    - d/p/lp1970672-PATCH-Increase-SECTION_MAP_LAST_BIT-to-5.patch 
+  * Update to new upstream version 1.7.5.
 
- -- Heather Lemon <heather.lemon@canonical.com>  Tue, 21 Nov 2023 15:19:22 +0000
+ -- dann frazier <dannf@debian.org>  Fri, 12 Apr 2024 07:57:10 -0600
 
-makedumpfile (1:1.6.7-1ubuntu2.4) focal; urgency=low
+makedumpfile (1:1.7.4-1) unstable; urgency=medium
 
-  * debian/rules: Remove "ata_piix.prefer_ms_hyperv=0" (LP: #1978333)
+  * Update to new upstream version 1.7.4.
+  * Build for riscv64.
 
- -- Heather Lemon <heather.lemon@canonical.com>  Mon, 13 Jun 2022 13:59:29 +0000
+ -- dann frazier <dannf@debian.org>  Fri, 10 Nov 2023 00:03:14 +0200
 
-makedumpfile (1:1.6.7-1ubuntu2.3) focal; urgency=medium
+makedumpfile (1:1.7.3-1) unstable; urgency=medium
 
-  * makedumpfile falls back to cp with the 5.11 kernel (LP: #1942784)
-    -d/p/0008-PATCH-Retrieve-MAX_PHYSMEM_BITS-from-vmcoreinfo.patch
-  * makedumpfile doesn't create dmesg file on 5.10+ kernels (LP: #1921403)
-    -d/p/0009-PATCH-1-2-printk-add-support-for-lockless-ringbuffer.patch
-    -d/p/0010-PATCH-2-2-printk-use-committed-finalized-state-value.patch
+  * Update to new upstream version 1.7.3.
 
- -- Ioanna Alifieraki <ioanna-maria.alifieraki@canonical.com>  Mon, 18 Oct 2021 16:43:56 +0000
+ -- dann frazier <dannf@debian.org>  Thu, 28 Sep 2023 14:19:41 -0600
 
-makedumpfile (1:1.6.7-1ubuntu2.2) focal; urgency=medium
+makedumpfile (1:1.7.2-1) unstable; urgency=medium
 
-  * Fix makedumpfile failure on arm64 with 5.4 kernels (LP: #1879214)
-    -d/p/0004-PATCH-arm64-Add-support-for-ARMv8.2-LPA-52-bit-PA-su.patch
-    -d/p/0005-PATCH-1-3-Use-vmcoreinfo-note-in-proc-kcore-for-mem-.patch
-    -d/p/0006-PATCH-2-3-arm64-Make-use-of-NUMBER-VA_BITS-in-vmcore.patch
-    -d/p/0007-PATCH-3-3-arm64-support-flipped-VA-and-52-bit-kernel.patch
+  * Update to new upstream version 1:1.7.2.
 
- -- Ioanna Alifieraki <ioanna-maria.alifieraki@canonical.com>  Thu, 15 Apr 2021 22:42:25 +0300
+ -- dann frazier <dannf@debian.org>  Wed, 26 Oct 2022 11:08:46 -0600
 
-makedumpfile (1:1.6.7-1ubuntu2.1) focal; urgency=medium
+makedumpfile (1:1.7.1-1) unstable; urgency=medium
 
-  * d/p/0003-align_PMD_SECTION_MASK_with_PHYS_MASK.patch (LP: #1869465)
-    Fix error on arm64 with 1TB+ of physical or firmware-mapped RAM.
+  * Update to new upstream version 1.7.1.
+  * Bump debhelper-compat to 13:
+    - Add a debian/not-installed file.
+  * Fix FTCBFS for arm64: Pass a suitable TARGET= to make. Thanks to
+    Helmut Grohne (Closes: #989932).
 
- -- Ioanna Alifieraki <ioanna-maria.alifieraki@canonical.com>  Thu, 04 Jun 2020 14:47:17 +0100
+ -- dann frazier <dannf@debian.org>  Fri, 22 Apr 2022 15:35:11 -0600
 
-makedumpfile (1:1.6.7-1ubuntu2) focal; urgency=low
+makedumpfile (1:1.7.0-1) unstable; urgency=medium
 
-  * debian/control/tests: sleep while waiting for systemd service.
-    Also, exit in case the service is not successfully started, and dump
-    status output for debugging.
-    This is necessary because now that the initrd is not generated during
-    postinst, it will be generated when the service is first started, and that
-    may delay it for a few seconds.
+  * Update to new upstream version 1.7.0.
+  * Enable zstd support (LP: #1949395).
 
- -- Thadeu Lima de Souza Cascardo <cascardo@canonical.com>  Tue, 17 Mar 2020 16:40:38 -0300
+ -- dann frazier <dannf@debian.org>  Mon, 08 Nov 2021 15:08:22 -0700
 
-makedumpfile (1:1.6.7-1ubuntu1) focal; urgency=low
+makedumpfile (1:1.6.9-1) experimental; urgency=medium
+
+  * Update to new upstream version 1.6.9.
+
+ -- dann frazier <dannf@debian.org>  Thu, 08 Jul 2021 07:29:19 -0600
+
+makedumpfile (1:1.6.8-4) unstable; urgency=medium
+
+  [ Ioanna Alifieraki ]
+  * Fix failure of dmesg.<timestamp> creation on 5.10+ kernels.
+    (Closes: #985896) (LP: #1921403). 
+  * Fix makedumpfile failure on arm64 with 5.4 kernels.
+    (Closes: #986594) (LP: #1879214)
+
+ -- dann frazier <dannf@debian.org>  Wed, 07 Apr 2021 16:32:38 -0600
+
+makedumpfile (1:1.6.8-3) unstable; urgency=medium
+
+  * Drop kdump-tools, which has been split into its own source package.
+  * Change maintainer to Debian Kdump team. Thanks to Louis Bouchard for
+    all of his years of work maintaining this package!
+
+ -- dann frazier <dannf@debian.org>  Mon, 18 Jan 2021 07:50:02 -0700
+
+makedumpfile (1:1.6.8-2) unstable; urgency=medium
+
+  * systemd: Use journal for StandardOutput instead of syslog, which
+    is deprecated. Thanks to Bryan Quigley. (Closes: #969013)
+
+ -- dann frazier <dannf@debian.org>  Sun, 27 Dec 2020 08:44:02 -0700
+
+makedumpfile (1:1.6.8-1) unstable; urgency=medium
+
+  [ Benjamin Drung ]
+  * Add Homepage field pointing to GitHub page
+  * kdump-tools.default: Remove trailing spaces, replace tabs by spaces, and
+    remove duplicate settings (Closes: #856935)
+  * Fix cleanup if mkinitramfs fails on kernel update
+  * Fix all shellcheck issues in Shell scripts
+  * Run shellcheck on package build and autopkgtest
+  * Add support for FTP uploads (Closes: #856957)
+  * Replace bsdmainutils by bsdextrautils (Closes: #964516)
+  * Use POSIX shell instead of bash
+  * Bump Standards-Version to 4.5.1
+
+  [ dann frazier ]
+  * Support dumping kernel via both SSH and NFS
+  * Update to new upstream version 1.6.8.
+
+ -- dann frazier <dannf@debian.org>  Tue, 01 Dec 2020 08:34:43 -0700
+
+makedumpfile (1:1.6.7-4) unstable; urgency=medium
+
+  [ Guilherme G. Piccoli ]
+  * kdump-tools: Remove KDUMP_SYSCTL for good
+  * kdump-tools: Add sysctl override mechanism
+  * kdump-tools: Cope with the lack of initramfs-tools OPTION=VAR feature in Debian
 
   [ Thadeu Lima de Souza Cascardo ]
-  * Merge from Debian unstable.  Remaining changes:
-    - Bump amd64 crashkernel from 384M-:128M to 512M-:192M.
-    - Add a systemd-resolved service dependency in order kdump-tools is able
-      to resolve DNS when in kdump boot.
+  * Add proper dependencies to DEP8 tests
 
-  [ Dan Streetman ]
-  * FeatureFreeze exception note:
-    I checked upstream log from 1.6.6-1.6.7 and confirmed this is bugfix-only
+ -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Tue, 04 Aug 2020 17:21:46 -0300
 
- -- Dan Streetman <ddstreet@canonical.com>  Fri, 13 Mar 2020 10:25:32 -0400
+makedumpfile (1:1.6.7-3) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Trim trailing whitespace.
+  * Wrap long lines in changelog entries: 1:1.6.4-1, 1:1.6.3-1, 1:1.6.2-
+    0.1, 1:1.6.1-1, 1:1.6.0-1, 1:1.5.9-6, 1:1.5.9-1, 1.5.5-2.
+  * Fix day-of-week for changelog entry 1:1.5.9-6.
+
+  [ Thadeu Lima de Souza Cascardo ]
+  * Fix build with GCC 10 (Closes: #957518)
+
+ -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Tue, 28 Jul 2020 21:40:32 -0300
+
+makedumpfile (1:1.6.7-2) unstable; urgency=medium
+
+  * Remove upstart support.
+  * Switch to debhelper-compat 12.
+
+ -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Fri, 17 Apr 2020 14:12:04 -0300
 
 makedumpfile (1:1.6.7-1) unstable; urgency=medium
 
@@ -70,34 +129,6 @@ makedumpfile (1:1.6.7-1) unstable; urgency=medium
   * Skip initrd generation during postinst. (Closes: #856594)
 
  -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Mon, 02 Mar 2020 04:48:06 -0300
-
-makedumpfile (1:1.6.6-4ubuntu3) focal; urgency=medium
-
-  * No-change rebuild with fixed binutils on arm64.
-
- -- Matthias Klose <doko@ubuntu.com>  Sat, 08 Feb 2020 11:06:59 +0000
-
-makedumpfile (1:1.6.6-4ubuntu2) focal; urgency=medium
-
-  * x86_64: Fix an error due to makedumpfile being out-of-sync with recent
-    kernels. To achieve that, add the following patch: "Increase
-    SECTION_MAP_LAST_BIT to 4". (LP: #1857616)
-
- -- Guilherme G. Piccoli <gpiccoli@canonical.com>  Fri, 03 Jan 2020 16:57:00 -0300
-
-makedumpfile (1:1.6.6-4ubuntu1) focal; urgency=medium
-
-  [ Thadeu Lima de Souza Cascardo ]
-  * Merge from Debian unstable.  Remaining changes:
-    - Bump amd64 crashkernel from 384M-:128M to 512M-:192M.
-  * Use reset_devices as a cmdline parameter. (LP: #1800566)
-  * Use kdump-config reload after cpu or memory hotplug. (LP: #1828596)
-
-  [ Guilherme G. Piccoli ]
-  * Add a systemd-resolved service dependency in order kdump-tools is able
-    to resolve DNS when in kdump boot. (LP: #1856323)
-
- -- Thadeu Lima de Souza Cascardo <cascardo@canonical.com>  Wed, 18 Dec 2019 14:38:51 -0300
 
 makedumpfile (1:1.6.6-4) unstable; urgency=medium
 
@@ -115,19 +146,6 @@ makedumpfile (1:1.6.6-3) unstable; urgency=medium
   * Use reset_devices as a cmdline parameter.
 
  -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Wed, 18 Sep 2019 01:00:16 +0000
-
-makedumpfile (1:1.6.6-2ubuntu1) eoan; urgency=medium
-
-  [ Thadeu Lima de Souza Cascardo ]
-  * Merge from Debian unstable.  Remaining changes:
-    - Bump amd64 crashkernel from 384M-:128M to 512M-:192M.
-  * Add kdump retry/delay mechanism when dumping over network (LP: #1681909)
-  * Allow proper reload of kdump after multiple hotplug events. (LP: #1828596)
-
-  [ Connor Kuehl ]
-  * Let the kernel decide the crashkernel offset for ppc64el (LP: #1741860)
-
- -- Thadeu Lima de Souza Cascardo <cascardo@canonical.com>  Tue, 06 Aug 2019 12:18:15 -0300
 
 makedumpfile (1:1.6.6-2) unstable; urgency=medium
 
@@ -148,33 +166,6 @@ makedumpfile (1:1.6.6-1) unstable; urgency=medium
 
  -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Fri, 12 Jul 2019 16:24:14 -0300
 
-makedumpfile (1:1.6.5-1ubuntu3) eoan; urgency=medium
-
-  * debian/kdump-config.in:
-    - Add kdump retry/delay mechanism when dumping over network.
-      (LP: #1681909)
-
- -- gpiccoli@canonical.com (Guilherme G. Piccoli)  Thu, 04 Jul 2019 15:20:53 -0300
-
-makedumpfile (1:1.6.5-1ubuntu2) eoan; urgency=medium
-
-  [ Thadeu Lima de Souza Cascardo ]
-  * Use maxcpus instead of nr_cpus on ppc64el. (LP: #1828597)
-  * Reload kdump when CPU is brought online. (LP: #1828596)
-
- -- Thadeu Lima de Souza Cascardo <cascardo@canonical.com>  Fri, 14 Jun 2019 10:58:40 -0300
-
-makedumpfile (1:1.6.5-1ubuntu1) disco; urgency=low
-
-  [ Ubuntu Merge-o-Matic ]
-  * Merge from Debian unstable.  Remaining changes:
-    - Bump amd64 crashkernel from 384M-:128M to 512M-:192M.
-
-  [ Thadeu Lima de Souza Cascardo ]
-  * Use a different service for vmcore dump. (LP: #1811692)
-
- -- Thadeu Lima de Souza Cascardo <cascardo@canonical.com>  Mon, 14 Jan 2019 15:42:44 -0200
-
 makedumpfile (1:1.6.5-1) unstable; urgency=medium
 
   * Update to new upstream version 1.6.5.
@@ -190,14 +181,6 @@ makedumpfile (1:1.6.4-3) unstable; urgency=medium
     (LP: #1790788)
 
  -- Thadeu Lima de Souza Cascardo <cascardo@debian.org>  Tue, 16 Oct 2018 15:30:16 -0300
-
-makedumpfile (1:1.6.4-2ubuntu1) cosmic; urgency=medium
-
-  * Bump amd64 crashkernel from 384M-:128M to 512M-:196M. Other
-    arches, like arm64 & ppc64el already use much higher minimum
-    threshold of 2G. This needs to be revisited post release.
-
- -- Dimitri John Ledkov <xnox@ubuntu.com>  Mon, 15 Oct 2018 10:36:36 +0200
 
 makedumpfile (1:1.6.4-2) unstable; urgency=medium
 
@@ -221,33 +204,46 @@ makedumpfile (1:1.6.4-1) unstable; urgency=medium
   * Changelog:
     o New feature
       - [PATCH v2 0/3] arm64: Add '--mem-usage' support (Bhupesh Sharma) f49ca13
-      - [PATCH v2 1/3] Add a new helper file 'tools.c' that provides some useful APIs (Bhupesh Sharma) 4d86cc7
-      - [PATCH v2 2/3] arm64: Add support to read symbols like _stext from '/proc/kallsyms' (Bhupesh Sharma) d1e7805
-      - [PATCH v2 3/3] Documentation: Update documentation regarding --mem-usage' option (Bhupesh Sharma) 8449bda
+      - [PATCH v2 1/3] Add a new helper file 'tools.c' that provides some useful
+        APIs (Bhupesh Sharma) 4d86cc7
+      - [PATCH v2 2/3] arm64: Add support to read symbols like _stext from
+        '/proc/kallsyms' (Bhupesh Sharma) d1e7805
+      - [PATCH v2 3/3] Documentation: Update documentation regarding
+        --mem-usage' option (Bhupesh Sharma) 8449bda
       - [PATCH 0/4] Add 5-level paging support (Baoquan He) 342fdab
       - [PATCH 2/4] Add pgtable_l5_enabled to number_table (Baoquan He) 8ae6f36
-      - [PATCH 3/4] Add a new function check_5level_paging() (Baoquan He) 33ca808
+      - [PATCH 3/4] Add a new function check_5level_paging() (Baoquan He)
+        33ca808
       - [PATCH 4/4] arch/x86_64: Add 5-level paging support (Dou Liyang) 30a3214
-      - [PATCH] handle mem_section as either a pointer or an array (Thadeu Lima de Souza Cascardo) 14876c4
+      - [PATCH] handle mem_section as either a pointer or an array (Thadeu Lima
+        de Souza Cascardo) 14876c4
       - [PATCH] ppc64: Increase the VA range (Hari Bathini) bd1ae9c
 
     o Bugfix
-      - [PATCH] sadump: Fix a problem of PTI enabled kernel (Takao Indoh) 38de12a
-      - [PATCH] Fix a bug when multi-threads feature meets enospace (Zhou Wenjian) 63b05c9
+      - [PATCH] sadump: Fix a problem of PTI enabled kernel (Takao Indoh)
+        38de12a
+      - [PATCH] Fix a bug when multi-threads feature meets enospace (Zhou
+        Wenjian) 63b05c9
       - [PATCH] Fix array index out of bound exception (Lianbo Jiang) e5f96e7
       - [PATCH] fix for hugepages filtering (Hari Bathini) 246801c
-      - [PATCH v2] Use integer arithmetics for the progress bar (Petr Tesarik) c6b79cb
-      - [PATCH 2/2] Check PG_swapbacked for swap cache pages (Petr Tesarik) ca1f31e
+      - [PATCH v2] Use integer arithmetics for the progress bar (Petr Tesarik)
+        c6b79cb
+      - [PATCH 2/2] Check PG_swapbacked for swap cache pages (Petr Tesarik)
+        ca1f31e
       - [PATCH] Fix -g for change of mem_section (Kazuhito Hagio) f3c87e0
       - [PATCH] Fix -i for KASLR (Kazuhito Hagio) 08db98c
       - [PATCH] Fix validate_mem_section() (Kazuhito Hagio) 8f1aafa
-      - [PATCH] arm64: Fix calculation of page_offset in case we are running cases other than mem-usage (Bhupesh Sharma) cb7af5f
+      - [PATCH] arm64: Fix calculation of page_offset in case we are running
+        cases other than mem-usage (Bhupesh Sharma) cb7af5f
 
     o Cleanup
       - [PATCH v2] Always use bigger SECTION_MAP_MASK (Petr Tesarik) 6c6789f
-      - [PATCH 1/2] Add is_cache_page() helper to check if a page belongs to the cache (Petr Tesarik) 694f28c
-      - [PATCH 1/4] arch/x86_64: Cleanup the address translation of the 4-level page tables (Dou Liyang) acab2a2
-      - [PATCH] Fix some compilation warnings on x86 system (Kazuhito Hagio) 2148e43
+      - [PATCH 1/2] Add is_cache_page() helper to check if a page belongs to the
+        cache (Petr Tesarik) 694f28c
+      - [PATCH 1/4] arch/x86_64: Cleanup the address translation of the 4-level
+        page tables (Dou Liyang) acab2a2
+      - [PATCH] Fix some compilation warnings on x86 system (Kazuhito Hagio)
+        2148e43
       - [PATCH] Update maintainers (Masaki Tachibana) bc7420b
 
   * Remove 0003-sparsemem_extreme.patch, applied upstream.
@@ -273,36 +269,53 @@ makedumpfile (1:1.6.3-1) unstable; urgency=medium
   * New upstream release. Main new feature:
     o Support new kernels
      - The supported kernel is updated to 4.14.8 in this version. (LP: #1746299)
-       4.14.9 and later can't be filtered correctly due to inappropriate VMCOREINFO,
-       it will be resolved in kernel 4.15.
+       4.14.9 and later can't be filtered correctly due to inappropriate
+       VMCOREINFO, it will be resolved in kernel 4.15.
 
   * Changelog:
     o New feature
-        - [PATCH v2] x86_64: Take care of init_level4_pgt rename in kernel (by Pratyush Anand) 64bd5db
-        - [PATCH v2] Fix SECTION_MAP_MASK for kernel >= v.13 (by Pratyush Anand) 4bf4f2b
-        - [PATCH v2] book3s/ppc64: Lower the max real address to 53 bits for kernels >= v4.11
-          (by Bhupesh Sharma) 6c83e74
-        - [PATCH v3 1/4] Support symbol __cpu_online_mask (by Takao Indoh) 3b11c00
-        - [PATCH] ppc64: update hash page table geometry (by Hari Bathini) 3c39f13
-        - [PATCH] handle renamed init_level4_pgt -> init_top_pgt (by Jeff Mahoney) 5e54d53
+        - [PATCH v2] x86_64: Take care of init_level4_pgt rename in kernel (by
+          Pratyush Anand) 64bd5db
+        - [PATCH v2] Fix SECTION_MAP_MASK for kernel >= v.13 (by Pratyush Anand)
+          4bf4f2b
+        - [PATCH v2] book3s/ppc64: Lower the max real address to 53 bits for
+          kernels >= v4.11 (by Bhupesh Sharma) 6c83e74
+        - [PATCH v3 1/4] Support symbol __cpu_online_mask (by Takao Indoh)
+          3b11c00
+        - [PATCH] ppc64: update hash page table geometry (by Hari Bathini)
+          3c39f13
+        - [PATCH] handle renamed init_level4_pgt -> init_top_pgt (by Jeff
+          Mahoney) 5e54d53
 
     o Bugfix
-        - [PATCH v2] arm64: Fix page table walk of 1GB section (by Bradley Bolen) 27508f1
-        - [PATCH v2 1/2] ppc64: set page_offset in get_versiondep_info_ppc64() (by Pingfan Liu) 52319d2
-        - [PATCH v2 2/2] ppc64: get the info of mem reserved for crashkernel (by Pingfan Liu) c7fcbbc
-        - [PATCH v3 3/4] sadump: Fix a KASLR problem of sadump (by Takao Indoh) b4f7d95
-        - [PATCH v3 4/4] sadump: Fix a KASLR problem of sadump while kdump is working (by Takao Indoh) 13d3059
-        - [PATCH 2/2] Fix 'kernel_version' variable being uninitialized & introduce minor reorganization
-          (by Bhupesh Sharma) d1ffe82
-        - [PATCH 1/2] Fix off-by-one errors in exclude_segment() (by Petr Tesarik) 590f35e
-        - [PATCH 2/2] Fix physical-to-virtual conversion in exclude_segment() (by Petr Tesarik) 6c1bf2a
+        - [PATCH v2] arm64: Fix page table walk of 1GB section (by Bradley
+          Bolen) 27508f1
+        - [PATCH v2 1/2] ppc64: set page_offset in get_versiondep_info_ppc64()
+          (by Pingfan Liu) 52319d2
+        - [PATCH v2 2/2] ppc64: get the info of mem reserved for crashkernel (by
+          Pingfan Liu) c7fcbbc
+        - [PATCH v3 3/4] sadump: Fix a KASLR problem of sadump (by Takao Indoh)
+          b4f7d95
+        - [PATCH v3 4/4] sadump: Fix a KASLR problem of sadump while kdump is
+          working (by Takao Indoh) 13d3059
+        - [PATCH 2/2] Fix 'kernel_version' variable being uninitialized &
+          introduce minor reorganization (by Bhupesh Sharma) d1ffe82
+        - [PATCH 1/2] Fix off-by-one errors in exclude_segment() (by Petr
+          Tesarik) 590f35e
+        - [PATCH 2/2] Fix physical-to-virtual conversion in exclude_segment()
+          (by Petr Tesarik) 6c1bf2a
 
     o Cleanup
-        - [PATCH] Fix formatting problems in header file (by Eric DeVolder) cefea9e
-        - [PATCH v3 2/4] Introduce vtop4_x86_64_pagetable (by Takao Indoh) 6de5d37
-        - [PATCH 1/2] Fix compilation warnings on ppc64/ppc64le platforms (by Bhupesh Sharma) 0df157a
-        - [PATCH] Make good use of is_cyclic_region() (by Atsushi Kumagai) 6bfd7a3
-        - [PATCH] Fix the regression about getting kernel version (by Atsushi Kumagai) 254c116
+        - [PATCH] Fix formatting problems in header file (by Eric DeVolder)
+          cefea9e
+        - [PATCH v3 2/4] Introduce vtop4_x86_64_pagetable (by Takao Indoh)
+          6de5d37
+        - [PATCH 1/2] Fix compilation warnings on ppc64/ppc64le platforms (by
+          Bhupesh Sharma) 0df157a
+        - [PATCH] Make good use of is_cyclic_region() (by Atsushi Kumagai)
+          6bfd7a3
+        - [PATCH] Fix the regression about getting kernel version (by Atsushi
+          Kumagai) 254c116
         - [PATCH] Update maintainers (by Atsushi Kumagai) 9d3147e
 
   * Use multi-user.target. (LP: #1708409)
@@ -364,59 +377,60 @@ makedumpfile (1:1.6.2-0.1) unstable; urgency=medium
   * Changelog:
     o New feature
         - [PATCH] Add initial sparc64 support (by Tom Hromatka) 001d9b7
-        - [PATCH v5 1/2] Add runtime kaslr offset if it exists (by Pratyush Anand)
-          2bfb7f1
+        - [PATCH v5 1/2] Add runtime kaslr offset if it exists (by Pratyush
+          Anand) 2bfb7f1
         - [PATCH v5 2/2] x86_64: Calculate page_offset in case of re-filtering/
           sadump/virsh dump (by Pratyush Anand) 4944f93
-        - [PATCH v2] Add the --partial-dmesg option to dump only non-cleared dmesg
-          (by Ivan Delalande) ec5da81
-        - [PATCH v3 1/2] Fold the calc of time delta into a func (by Pingfan Liu)
-          1192446
-        - [PATCH v3 2/2] print_info: Show the remaining time of dump progress (by
-          Pingfan Liu) 3438e8d
+        - [PATCH v2] Add the --partial-dmesg option to dump only non-cleared
+          dmesg (by Ivan Delalande) ec5da81
+        - [PATCH v3 1/2] Fold the calc of time delta into a func (by Pingfan
+          Liu) 1192446
+        - [PATCH v3 2/2] print_info: Show the remaining time of dump progress
+          (by Pingfan Liu) 3438e8d
 
     o Bugfix
-        - [PATCH] elf_info.c: fix memory leak in get_kcore_dump_loads() (by Pingfan
-          Liu) f10d1e2
+        - [PATCH] elf_info.c: fix memory leak in get_kcore_dump_loads() (by
+          Pingfan Liu) f10d1e2
         - [PATCH] Error on re-filtering the dump file with no free pages (by
           Mikhail Zaslonko) deb8e1f
-        - [PATCH] Fix get_kcore_dump_loads() error case (by Pratyush Anand) a569d63
+        - [PATCH] Fix get_kcore_dump_loads() error case (by Pratyush Anand)
+          a569d63
         - [PATCH] sadump: set info->page_size before cache_init() (by Hatayama,
           Daisuke) b98e6e0
         - [PATCH] Fix the use of Xen physical and machine addresses (by Petr
           Tesarik) e765785
         - [PATCH V3] elf_info: Fix file_size if segment is excluded (by Pratyush
           Anand) 88731c7
-        - [PATCH v3] Prevent data loss in last page of ELF core dumpfile (by Eric
-          DeVolder) 622f0d7
+        - [PATCH v3] Prevent data loss in last page of ELF core dumpfile (by
+          Eric DeVolder) 622f0d7
         - [PATCH] Consider not page-size aligned phys_end for paddr_to_pfn() (by
           Atsushi Kumagai) 25259e6
         - [PATCH] Fix the regression caused by moving cache_init() earlier (by
           Atsushi Kumagai) be0461f
 
     o Cleanup
-        - [PATCH 1/4] eppic: Rename scripts to reflect validity of kernel version
-          (by Kamalesh Babulal) b55b29f
+        - [PATCH 1/4] eppic: Rename scripts to reflect validity of kernel
+          version (by Kamalesh Babulal) b55b29f
         - [PATCH 2/4] eppic/vhost_net_buffers: Introduce changes for kernel 3.19
           (by Kamalesh Babulal) 0a1d8ee
         - [PATCH 3/4] eppic/dir_names: Introduce changes for kernel 3.14 (by
           Kamalesh Babulal) 5c822a7
-        - [PATCH 4/4] eppic/keyring: Introduce changes for kernel 4.4 (by Kamalesh
-          Babulal) 19fe701
-        - [PATCH v3 1/7] show_mem_usage(): calculate page offset after elf load (by
-          Pratyush Anand) 4b0bed3
+        - [PATCH 4/4] eppic/keyring: Introduce changes for kernel 4.4 (by
+          Kamalesh Babulal) 19fe701
+        - [PATCH v3 1/7] show_mem_usage(): calculate page offset after elf load
+          (by Pratyush Anand) 4b0bed3
         - [PATCH v3 2/7] initial(): call cache_init() a bit early (by Pratyush
           Anand) 8e2834b
-        - [PATCH v3 3/7] x86_64: check physical address in PT_LOAD for none direct
-          mapped regions (by Pratyush Anand) f136302
+        - [PATCH v3 3/7] x86_64: check physical address in PT_LOAD for none
+          direct mapped regions (by Pratyush Anand) f136302
         - [PATCH v3 4/7] elf_info: kcore: check for invalid physical address (by
           Pratyush Anand) f4ab689
         - [PATCH v3 5/7] makedumpfile: Correct the calculation of kvaddr in
           set_kcore_vmcoreinfo (by Baoquan He) 4c53423
         - [PATCH v3 6/7] makedumpfile: Discard process_dump_load (by Baoquan He)
           f3ff8c6
-        - [PATCH v3 7/7] mem-usage: allow to work only with -f for kernel version <
-          4.11 (by Pratyush Anand) 78cbb40
+        - [PATCH v3 7/7] mem-usage: allow to work only with -f for kernel
+          version < 4.11 (by Pratyush Anand) 78cbb40
         - [PATCH] Fix typo in the ERRMSG of function show_mem_usage (by Eric
           Desrochers) ade8512 (Closes: #857051)
         - [PATCH] Fix other typos in messages (by Atsushi Kumagai) b171374
@@ -452,28 +466,28 @@ makedumpfile (1:1.6.1-1) sid; urgency=medium
 
   * Changelog:
     o New feature
-        - [PATCH v2] Support _count -> _refcount rename in struct page (by Vitaly
-          Kuznetsov) ed46b6a
+        - [PATCH v2] Support _count -> _refcount rename in struct page (by
+          Vitaly Kuznetsov) ed46b6a
         - [PATCH 1/8] ppc64: fix vtop page translation for 4K pages (by Hari
           Bathini) cf02f88
-        - [PATCH 2/8] ppc64: Use kernel terminology for each level in 4-level page
-          table (by Hari Bathini) 37abbe1
+        - [PATCH 2/8] ppc64: Use kernel terminology for each level in 4-level
+          page table (by Hari Bathini) 37abbe1
         - [PATCH 3/8] ppc64: address changes in kernel v4.5 (by Hari Bathini)
           bc86b61
-        - [PATCH 4/8] ppc64: address change in _PAGE_PRESNT flag for PowerISA v3.0
-          (by Hari Bathini) 3003fbe
+        - [PATCH 4/8] ppc64: address change in _PAGE_PRESNT flag for PowerISA
+          v3.0 (by Hari Bathini) 3003fbe
         - [PATCH 5/8] ppc64: use physical addresses and unfold pud for 64K page
           size (by Hari Bathini) afe7f9f
         - [PATCH 6/8] ppc64: support big endian Linux page tables (by Hari
           Bathini) f3d7cc5
         - [PATCH 7/8] ppc64: use the same masked bit values for 4K and 64K
           pagesizes (by Hari Bathini) 398746a
-        - [PATCH 8/8] ppc64: enable address translation support for radix mmu (by
-          Hari Bathini) ed65d60
-        - [PATCH 01/10] arm64: cleanup code, comment, blank space, blank lines etc
-          (by Pratyush Anand) c42c582
-        - [PATCH 02/10] read_vmcoreinfo_long: Allow to read hex values as well (by
-          Pratyush Anand) b01fa28
+        - [PATCH 8/8] ppc64: enable address translation support for radix mmu
+          (by Hari Bathini) ed65d60
+        - [PATCH 01/10] arm64: cleanup code, comment, blank space, blank lines
+          etc (by Pratyush Anand) c42c582
+        - [PATCH 02/10] read_vmcoreinfo_long: Allow to read hex values as well
+          (by Pratyush Anand) b01fa28
         - [PATCH 03/10] Introduce read_vmcoreinfo_ulong() (by Pratyush Anand)
           edc314e
         - [PATCH 04/10] arm64: use already available PAGESIZE() and PAGESHIFT()
@@ -481,34 +495,34 @@ makedumpfile (1:1.6.1-1) sid; urgency=medium
         - [PATCH 05/10] arm64: fix page_offset definition (by Pratyush Anand)
           a4335c6
         - [PATCH 06/10] arm64: fix re-filtering (by Pratyush Anand) 618b76c
-        - [PATCH 07/10] arm64: use value of VA_BITS and PHYS_OFFSET embedded into
-          vmcore (by Pratyush Anand) 74df822
+        - [PATCH 07/10] arm64: use value of VA_BITS and PHYS_OFFSET embedded
+          into vmcore (by Pratyush Anand) 74df822
         - [PATCH 08/10] arm64: immunize identity mapped address finding w.r.t.
           kernel changes (by Pratyush Anand) a84f726
         - [PATCH 09/10] arm64: Add support for 4level 4K page translations table
           (by Azriel Samson) 969ee30
-        - [PATCH 10/10] arm64: fix memory layout as per changes in v4.6 kernel (by
-          Pratyush Anand) b6fe70c
+        - [PATCH 10/10] arm64: fix memory layout as per changes in v4.6 kernel
+          (by Pratyush Anand) b6fe70c
 
     o Bugfix
-        - [PATCH 1/2] sadump: fix segmentation fault on sadump-related formats (by
-          HATAYAMA Daisuke) 0ba14bc
+        - [PATCH 1/2] sadump: fix segmentation fault on sadump-related formats
+          (by HATAYAMA Daisuke) 0ba14bc
         - [PATCH 2/2] sadump: fix wrong progress report on sadump formats (by
           HATAYAMA Daisuke) d5d268b
         - [PATCH] Fix module init base and size offset for kernel v4.5 (by
           Guenther Hutzl) 32dd468
-        - [PATCH] Fix uninitialized file descriptors for parallel dump (by Atsushi
-          Kumagai) 1474dd4
+        - [PATCH] Fix uninitialized file descriptors for parallel dump (by
+          Atsushi Kumagai) 1474dd4
         - [PATCH] x86_64: Set zero to phys_base for the kernel older than 2.6.22
           (by Atsushi Kumagai) 114060b
 
     o Cleanup
-        - [PATCH] Add more descriptions of multi-threads feature (by Zhou Wenjian)
-          2af8d6a
+        - [PATCH] Add more descriptions of multi-threads feature (by Zhou
+          Wenjian) 2af8d6a
         - [PATCH v2] Cleanup: Use a negative number for uninitialized file
           descriptors (by Petr Tesarik) 8b8fa9f
-        - [PATCH v3 1/3] open_dump_bitmap: open bitmap file in non-cyclic case (by
-          Martin Wilck) a8d8657
+        - [PATCH v3 1/3] open_dump_bitmap: open bitmap file in non-cyclic case
+          (by Martin Wilck) a8d8657
         - [PATCH v3 2/3] move call to open_dump_bitmap() to after call to
           initial() (by Martin Wilck) 3696c40
         - [PATCH v3 3/3] close_dump_bitmap: simplify logic (by Martin Wilck)
@@ -519,8 +533,8 @@ makedumpfile (1:1.6.1-1) sid; urgency=medium
           Anand) 0c9dd01
         - [PATCH V2 2/4] x86_64: translate all VA to PA using page table values
           (by Pratyush Anand) c41e33c
-        - [PATCH V2 3/4] x86_64: kill is_vmalloc_addr_x86_64() (by Pratyush Anand)
-          8419f4d
+        - [PATCH V2 3/4] x86_64: kill is_vmalloc_addr_x86_64() (by Pratyush
+          Anand) 8419f4d
         - [PATCH V2 4/4] x86_64: kill some unused initialization (by Pratyush
           Anand) ecb3719
         - [PATCH v2 2/2] Clean up unused KERNEL_IMAGE_SIZE (by Atsushi Kumagai)
@@ -632,33 +646,50 @@ makedumpfile (1:1.6.0-1) sid; urgency=medium
 
     Changelog:
     o New feature
-        - [PATCH V7] Exclude page structures of non-dumped pages. (by Cliff Wickman) 46176a9
-        - [PATCH 1/4] ARM64: Refactor code to support multiple page level. (by Pratyush Anand) 28a4729
-        - [PATCH 2/4] ARM64: Decide VA Bits on the basis of _stext symbol value. (by Pratyush Anand) a93301d
+        - [PATCH V7] Exclude page structures of non-dumped pages. (by Cliff
+          Wickman) 46176a9
+        - [PATCH 1/4] ARM64: Refactor code to support multiple page level. (by
+          Pratyush Anand) 28a4729
+        - [PATCH 2/4] ARM64: Decide VA Bits on the basis of _stext symbol value.
+          (by Pratyush Anand) a93301d
         - [PATCH 3/4] ARM64: Fix KVBASE. (by Pratyush Anand) ec85257
-        - [PATCH 4/4] ARM64: Fix for ARM64 3 level translation tables. (by Sameer Goel) c92a63d
+        - [PATCH 4/4] ARM64: Fix for ARM64 3 level translation tables. (by
+          Sameer Goel) c92a63d
 
     o Bugfix
         - [PATCH] Fix bitmap buffer release code. (by Atsushi Kumagai) 7556e69
-        - [PATCH 1/3] Keep segment memory size when re-filtering ELF dumps (by Petr Tesarik) 606fe8c
-        - [PATCH 2/3] Mark unstored ELF pages as filtered (by Petr Tesarik) 1cdabcd
+        - [PATCH 1/3] Keep segment memory size when re-filtering ELF dumps (by
+          Petr Tesarik) 606fe8c
+        - [PATCH 2/3] Mark unstored ELF pages as filtered (by Petr Tesarik)
+          1cdabcd
         - [PATCH 3/3] Rewrite readpage_elf (by Petr Tesarik) 7a7cebc
-        - [PATCH] Looking for page.compound_order/compound_dtor to exclude hugepages
-          (by Atsushi Kumagai) 5bc1f52
-        - [PATCH] Skip examining compound tail pages (by Atsushi Kumagai) 13b4233
-        - [PATCH] arm64: fix two level pmd calculation (by Pratyush Anand) 6759c72
-        - [PATCH] Fix module core base and size offset for kernel v4.5 (by Pratyush Anand) fa6a75a
-        - [PATCH] Fix deleted macro by mistake for ia64 (by Atsushi Kumagai) cfe652e
-        - [PATCH] Fix boundary value bug for checking memory holes (by Atsushi Kumagai) 11a6dae
-        - [PATCH] Skip null entries to walk page tables correctly (by Atsushi Kumagai) ecf7a13
-        - [PATCH] Fix read data corruption for multi thread feature. (by Atsushi Kumagai) ae848e8
+        - [PATCH] Looking for page.compound_order/compound_dtor to exclude
+          hugepages (by Atsushi Kumagai) 5bc1f52
+        - [PATCH] Skip examining compound tail pages (by Atsushi Kumagai)
+          13b4233
+        - [PATCH] arm64: fix two level pmd calculation (by Pratyush Anand)
+          6759c72
+        - [PATCH] Fix module core base and size offset for kernel v4.5 (by
+          Pratyush Anand) fa6a75a
+        - [PATCH] Fix deleted macro by mistake for ia64 (by Atsushi Kumagai)
+          cfe652e
+        - [PATCH] Fix boundary value bug for checking memory holes (by Atsushi
+          Kumagai) 11a6dae
+        - [PATCH] Skip null entries to walk page tables correctly (by Atsushi
+          Kumagai) ecf7a13
+        - [PATCH] Fix read data corruption for multi thread feature. (by Atsushi
+          Kumagai) ae848e8
 
     o Cleanup
-        - [PATCH] Remove useless definitions of return value. (by Atsushi Kumagai) 3d32567
-        - [PATCH] Clean up the in-accurate message printing about mmap (by Baoquan He) 2b8c001
-        - [PATCH v8] Improve the performance of --num-threads -d 31 (by Zhou Wenjian) dfa2447
+        - [PATCH] Remove useless definitions of return value. (by Atsushi
+          Kumagai) 3d32567
+        - [PATCH] Clean up the in-accurate message printing about mmap (by
+          Baoquan He) 2b8c001
+        - [PATCH v8] Improve the performance of --num-threads -d 31 (by Zhou
+          Wenjian) dfa2447
         - [PATCH] Fix compilation warning (by Pratyush Anand) 7dda810
-        - [PATCH] Fix compilation warnings for x86_64 (by Atsushi Kumagai) 27b5fb5
+        - [PATCH] Fix compilation warnings for x86_64 (by Atsushi Kumagai)
+          27b5fb5
         - [PATCH] Fix man page to add -p option (by Atsushi Kumagai) e444aad
         - [PATCH] Fix compilation warning (by Andrey Skvortsov) 484c6b1
 
@@ -674,7 +705,7 @@ makedumpfile (1:1.6.0-1) sid; urgency=medium
 makedumpfile (1:1.5.9-7) sid; urgency=medium
 
   * [d/rules] Lower kexec-tools dependency to -2
-      The ubuntu merge will happen on an 1:2.0.10-2 version so it cannot 
+      The ubuntu merge will happen on an 1:2.0.10-2 version so it cannot
       depends on -3.
 
  -- Louis Bouchard <louis.bouchard@ubuntu.com>  Tue, 31 May 2016 14:36:07 +0200
@@ -715,11 +746,12 @@ makedumpfile (1:1.5.9-6) sid; urgency=medium
     architecture-specific file containing the definition. A generic symlink
     called /etc/default/grub.d/kdump-tools.cfg points to the architecture
     specific file.
-    
+
     The default values are :
 
      - All but ppc64el : 128M
-     - ppc64el : 2G-4G:320M,4G-32G:512M,32G-64G:1024M,64G-128G:2048M,128G-:4096M@32M
+     - ppc64el :
+       2G-4G:320M,4G-32G:512M,32G-64G:1024M,64G-128G:2048M,128G-:4096M@32M
 
     (LP: #1567539)
     On s390x architecture, the crashkernel parameter is added to the
@@ -728,7 +760,7 @@ makedumpfile (1:1.5.9-6) sid; urgency=medium
     /etc/default/kdump-tools is also modified to use the cio_ignore parameter
     when kexec loads the crash kernel (LP: #1570775)
 
- -- Louis Bouchard <louis.bouchard@ubuntu.com>  Tue, 26 May 2016 15:28:43 +0200
+ -- Louis Bouchard <louis.bouchard@ubuntu.com>  Thu, 26 May 2016 15:28:43 +0200
 
 makedumpfile (1:1.5.9-5) sid; urgency=medium
 
@@ -794,50 +826,78 @@ makedumpfile (1:1.5.9-1) sid; urgency=medium
     Changelog:
     o New feature
         - [PATCH] Support ARM64. (by Pratyush Anand) 94d47d1
-        - [PATCH 1/2] Enable compressed dump formats for Xen. (by Petr Tesarik) 349a0ed
-        - [PATCH 2/2] Remove notes about ELF being the only available format for Xen dumps.
-          (by Petr Tesarik) 5cab480
-        - [PATCH v5 01/10] Add readpage_kdump_compressed_parallel. (by Qiao Nuohan) 5fab021
+        - [PATCH 1/2] Enable compressed dump formats for Xen. (by Petr Tesarik)
+          349a0ed
+        - [PATCH 2/2] Remove notes about ELF being the only available format for
+          Xen dumps. (by Petr Tesarik) 5cab480
+        - [PATCH v5 01/10] Add readpage_kdump_compressed_parallel. (by Qiao
+          Nuohan) 5fab021
         - [PATCH v5 02/10] Add mappage_elf_parallel. (by Qiao Nuohan) edca232
         - [PATCH v5 03/10] Add readpage_elf_parallel. (by Qiao Nuohan) 7f15b41
         - [PATCH v5 04/10] Add read_pfn_parallel. (by Qiao Nuohan) a7243fe
-        - [PATCH v5 05/10] Add function to initial bitmap for parallel use. (by Qiao Nuohan) 56a6bc4
-        - [PATCH v5 06/10] Add filter_data_buffer_parallel. (by Qiao Nuohan) 2a7cb9f
-        - [PATCH v5 07/10] Add write_kdump_pages_parallel to allow parallel process. (by Qiao Nuohan) c2595d9
-        - [PATCH v5 08/10] Initial and free data used for parallel process. (by Qiao Nuohan) 4538848
-        - [PATCH v5 09/10] Make makedumpfile available to read and compress pages parallelly.
-          (by Qiao Nuohan) b265102
-        - [PATCH v5 10/10] Add usage and manual about multiple threads process. (by Qiao Nuohan) b18a8a6
+        - [PATCH v5 05/10] Add function to initial bitmap for parallel use. (by
+          Qiao Nuohan) 56a6bc4
+        - [PATCH v5 06/10] Add filter_data_buffer_parallel. (by Qiao Nuohan)
+          2a7cb9f
+        - [PATCH v5 07/10] Add write_kdump_pages_parallel to allow parallel
+          process. (by Qiao Nuohan) c2595d9
+        - [PATCH v5 08/10] Initial and free data used for parallel process. (by
+          Qiao Nuohan) 4538848
+        - [PATCH v5 09/10] Make makedumpfile available to read and compress
+          pages parallelly. (by Qiao Nuohan) b265102
+        - [PATCH v5 10/10] Add usage and manual about multiple threads process.
+          (by Qiao Nuohan) b18a8a6
 
     o Bugfix
-        - [PATCH] Correct vmap_area_list support for i386 and ppc32. (by Atsushi Kumagai) 4194d7b
-        - [PATCH] Free pages aren't removed in non-cyclic mode. (by Atsushi Kumagai) d64cf7f
-        - [PATCH v2] Fix a bug in generating incomplete kdump core. (by Zhou Wenjian) 9cee495
+        - [PATCH] Correct vmap_area_list support for i386 and ppc32. (by Atsushi
+          Kumagai) 4194d7b
+        - [PATCH] Free pages aren't removed in non-cyclic mode. (by Atsushi
+          Kumagai) d64cf7f
+        - [PATCH v2] Fix a bug in generating incomplete kdump core. (by Zhou
+          Wenjian) 9cee495
         - [PATCH] Remove the double free of sph. (by Chao Fan) 72dec41
         - [PATCH 1/2] sadump: Change bit order. (by HATAYAMA Daisuke) 5f15256
-        - [PATCH 2/2] sadump: Perform explicit zero page filtering. (by HATAYAMA Daisuke) 19b3a91
+        - [PATCH 2/2] sadump: Perform explicit zero page filtering. (by HATAYAMA
+          Daisuke) 19b3a91
 
     o Cleanup
-        - [PATCH 01/13] Organize bitmap structure for cyclic logic. (by Atsushi Kumagai) 5fc24bf
-        - [PATCH 02/13] Add option to specify working directory for the bitmap. (by Atsushi Kumagai) 5c5a8b8
-        - [PATCH 03/13] Integrate the entry point of is_dumpable(). (by Atsushi Kumagai) 5c8c680
-        - [PATCH 04/13] Integrate the main logic of writing kdump file. (by Atsushi Kumagai) d18796d
-        - [PATCH 05/13] Communalize the function for creating 1st bitmap. (by Atsushi Kumagai) b00a7b0
-        - [PATCH 06/13] Remove the old logic of writing kdump pages. (by Atsushi Kumagai) 4d55542
-        - [PATCH 07/13] Integrate filtering process for ELF path. (by Atsushi Kumagai) 679a818
-        - [PATCH 08/13] Remove the old logic of writing ELF pages. (by Atsushi Kumagai) 672354b
-        - [PATCH 09/13] Adjust --mem-usage path to the new code. (by Atsushi Kumagai) 57153b0
-        - [PATCH 10/13] Adjust --split/--reassemble path to the new code. (by Atsushi Kumagai) 95435de
-        - [PATCH 11/13] Adjust refiltering path to the new code. (by Atsushi Kumagai) c7fb41c
-        - [PATCH 12/13] Adjust sadump path to the new code. (by Atsushi Kumagai) edd2bf2
+        - [PATCH 01/13] Organize bitmap structure for cyclic logic. (by Atsushi
+          Kumagai) 5fc24bf
+        - [PATCH 02/13] Add option to specify working directory for the bitmap.
+          (by Atsushi Kumagai) 5c5a8b8
+        - [PATCH 03/13] Integrate the entry point of is_dumpable(). (by Atsushi
+          Kumagai) 5c8c680
+        - [PATCH 04/13] Integrate the main logic of writing kdump file. (by
+          Atsushi Kumagai) d18796d
+        - [PATCH 05/13] Communalize the function for creating 1st bitmap. (by
+          Atsushi Kumagai) b00a7b0
+        - [PATCH 06/13] Remove the old logic of writing kdump pages. (by Atsushi
+          Kumagai) 4d55542
+        - [PATCH 07/13] Integrate filtering process for ELF path. (by Atsushi
+          Kumagai) 679a818
+        - [PATCH 08/13] Remove the old logic of writing ELF pages. (by Atsushi
+          Kumagai) 672354b
+        - [PATCH 09/13] Adjust --mem-usage path to the new code. (by Atsushi
+          Kumagai) 57153b0
+        - [PATCH 10/13] Adjust --split/--reassemble path to the new code. (by
+          Atsushi Kumagai) 95435de
+        - [PATCH 11/13] Adjust refiltering path to the new code. (by Atsushi
+          Kumagai) c7fb41c
+        - [PATCH 12/13] Adjust sadump path to the new code. (by Atsushi Kumagai)
+          edd2bf2
         - [PATCH 13/13] Remove --non-cyclic option. (by Atsushi Kumagai) a117ae9
-        - [PATCH] Optimise the function reserve_diskspace. (by Zhou Wenjian) 3605073
-        - [PATCH v2] Add description of pages lost by ENOSPACE in IMPLEMENTATION. (by Zhou Wenjian) 0e20f33
-        - [PATCH 1/2] Enable compressed dump formats for Xen. (by Petr Tesarik) 349a0ed
-        - [PATCH 2/2] Remove notes about ELF being the only available format for Xen dumps.
-          (by Petr Tesarik) 5cab480
-        - [PATCH v2] Code changes to satisfy the coverity scan. (by Chao Fan) 0c65e38
-        - [PATCH] Improve performance for parallel compression with zlib. (by Atsushi Kumagai) 3ef6629
+        - [PATCH] Optimise the function reserve_diskspace. (by Zhou Wenjian)
+          3605073
+        - [PATCH v2] Add description of pages lost by ENOSPACE in
+          IMPLEMENTATION. (by Zhou Wenjian) 0e20f33
+        - [PATCH 1/2] Enable compressed dump formats for Xen. (by Petr Tesarik)
+          349a0ed
+        - [PATCH 2/2] Remove notes about ELF being the only available format for
+          Xen dumps. (by Petr Tesarik) 5cab480
+        - [PATCH v2] Code changes to satisfy the coverity scan. (by Chao Fan)
+          0c65e38
+        - [PATCH] Improve performance for parallel compression with zlib. (by
+          Atsushi Kumagai) 3ef6629
 
   * Debian specific enhancements :
 
@@ -869,7 +929,7 @@ makedumpfile (1:1.5.9-1) sid; urgency=medium
 
 makedumpfile (1:1.5.8-4) sid; urgency=medium
 
-  * Add cherry-pick of commits b859e0a, f1cea98, 3cc296c, 70ce1a2, 
+  * Add cherry-pick of commits b859e0a, f1cea98, 3cc296c, 70ce1a2,
     0423186 and 9e18e42 that were missed between 1.5.7-5 and 1.5.8-1
     (Closes: #793485)
 
@@ -877,7 +937,7 @@ makedumpfile (1:1.5.8-4) sid; urgency=medium
 
 makedumpfile (1:1.5.8-3) sid; urgency=medium
 
-  * Makes sysVinit script execution contitional to the 
+  * Makes sysVinit script execution contitional to the
     use of upstart. Closes: 789058
 
  -- Louis Bouchard <louis.bouchard@ubuntu.com>  Wed, 17 Jun 2015 15:10:42 +0200
@@ -905,74 +965,74 @@ makedumpfile (1:1.5.8-1) sid; urgency=medium
 
     o Support new kernels
     - The supported kernel is updated to 3.19 in this version.
- 
+
     Changelog:
     o New feature
-         - [PATCH v2] Get MODULES_VADDR by KERNEL_IMAGE_SIZE for x86_64. 
+         - [PATCH v2] Get MODULES_VADDR by KERNEL_IMAGE_SIZE for x86_64.
            (by Baoquan He) 56649f7
-         - [PATCH v4 1/4] Make get_elf64_phdr()/get_elf32_phdr() public. 
+         - [PATCH v4 1/4] Make get_elf64_phdr()/get_elf32_phdr() public.
            (by Wang Xiao) 3182be9
-         - [PATCH v4 2/4] Make the incomplete dumpfile generated by ENOSPC 
+         - [PATCH v4 2/4] Make the incomplete dumpfile generated by ENOSPC
            error analyzable.
            (by Wang Xiao) e39216f
-         - [PATCH v4 3/4] Implementation of dealing with kdump-compressed 
+         - [PATCH v4 3/4] Implementation of dealing with kdump-compressed
            dumpfile with ENOSPC error. (by Wang Xiao) 76025d3
-         - [PATCH v4 4/4] Fix reassemble_kdump_header(). 
+         - [PATCH v4 4/4] Fix reassemble_kdump_header().
            (by Zhou Wenjian) 45a1885
-         - [PATCH v3] Enable --mem-usage for s390x. 
+         - [PATCH v3] Enable --mem-usage for s390x.
            (by Michael Holzheu) 2e452d7
-         - [PATCH v5 1/5] Add support for splitblock. 
+         - [PATCH v5 1/5] Add support for splitblock.
            (by Zhou Wenjian) c7825d4
-         - [PATCH v5 2/5] Add tools for reading and writing from splitblock 
+         - [PATCH v5 2/5] Add tools for reading and writing from splitblock
            table.  (by Zhou Wenjian) 11dcbfe
          - [PATCH v5 3/5] Add module of generating table.
            (by Zhou Wenjian) 28e367c
-         - [PATCH v5 4/5] Add module of calculating start_pfn and end_pfn in 
+         - [PATCH v5 4/5] Add module of calculating start_pfn and end_pfn in
            each dumpfile.
            (by Zhou Wenjian) 2b74c02
-         - [PATCH v5 5/5] Add support for --splitblock-size. 
+         - [PATCH v5 5/5] Add support for --splitblock-size.
            (by Zhou Wenjian) 3352179
-         - [PATCH] sadump: Support more than 16TB physical memory space. 
+         - [PATCH] sadump: Support more than 16TB physical memory space.
            (by HATAYAMA Daisuke) 37afcd5
-     
+
      o Bugfix
          - [PATCH] Use file offset in initialize_mmap().
            (by Petr Tesarik) f822608
-     
+
      o Cleanup
-         - [PATCH] Initialize symbols early for old kernels. 
+         - [PATCH] Initialize symbols early for old kernels.
            (by Atsushi Kumagai) 99850a1
-         - [PATCH v2] Introduce stub method for machine dependent parts. 
+         - [PATCH v2] Introduce stub method for machine dependent parts.
            (by Atsushi Kumagai) bf0bbf9
-         - [PATCH] Read vmcoreinfo as early as possible. 
+         - [PATCH] Read vmcoreinfo as early as possible.
            (by Atsushi Kumagai) 21631da
-         - [PATCH] Bring get_kcore_dump_loads() backward. 
+         - [PATCH] Bring get_kcore_dump_loads() backward.
            (by Atsushi Kumagai) c1d9e15
-         - [PATCH 1/2] Add description of elf dump file. 
+         - [PATCH 1/2] Add description of elf dump file.
            (by Zhou Wenjian) 4074bb6
-         - [PATCH 2/2] Add description of incomplete dump file. 
+         - [PATCH 2/2] Add description of incomplete dump file.
            (by Zhou Wenjian) b343067
-         - [PATCH] Cleanup: Add some comments for ELF format. 
+         - [PATCH] Cleanup: Add some comments for ELF format.
            (by Atsushi Kumagai) 4a59bd6
-         - [PATCH 1/2] Modify the description of the dump level. 
+         - [PATCH 1/2] Modify the description of the dump level.
            (by Atsushi Kumagai) 3599df6
-         - [PATCH 2/2] Change the part of the pfn counter for page cache. 
+         - [PATCH 2/2] Change the part of the pfn counter for page cache.
            (by Atsushi Kumagai) 7b55569
-         - [PATCH v3 1/7] cache: get rid of search loop in cache_add(). 
+         - [PATCH v3 1/7] cache: get rid of search loop in cache_add().
            (by Petr Tesarik) e068ea2
-         - [PATCH v3 2/7] cache: allow to return a page to the pool. 
+         - [PATCH v3 2/7] cache: allow to return a page to the pool.
            (by Petr Tesarik) f2b30c6
-         - [PATCH v3 3/7] cache: do not allocate from the pending list. 
+         - [PATCH v3 3/7] cache: do not allocate from the pending list.
            (by Petr Tesarik) ff592e6
-         - [PATCH v3 4/7] cache: add hit/miss statistics to the final report.  
+         - [PATCH v3 4/7] cache: add hit/miss statistics to the final report.
            (by Petr Tesarik) 7405a60
-         - [PATCH v3 5/7] cache: allocate buffers in one big chunk. 
+         - [PATCH v3 5/7] cache: allocate buffers in one big chunk.
            (by Petr Tesarik) 65899d0
-         - [PATCH v3 6/7] cache: allow arbitrary size of cache entries. 
+         - [PATCH v3 6/7] cache: allow arbitrary size of cache entries.
            (by Petr Tesarik) 5881f23
-         - [PATCH v3 7/7] cache: store mapped regions directly in the cache.  
+         - [PATCH v3 7/7] cache: store mapped regions directly in the cache.
            (by Petr Tesarik) 1acd75f
-         - [PATCH] Update email addresses of mainteners. 
+         - [PATCH] Update email addresses of mainteners.
            (by Atsushi Kumagai) febff05
 
  -- Louis Bouchard <louis.bouchard@ubuntu.com>  Tue, 28 Apr 2015 11:38:27 +0200
@@ -1002,14 +1062,14 @@ makedumpfile (1.5.7-2) unstable; urgency=medium
 makedumpfile (1.5.7-1) unstable; urgency=medium
 
   * New upstream version includes :
-    - Show the memory usage of 1st kernel : Add the new option 
-      "--mem-usage" to show the memory usage at a given moment 
-      in 1st kernel. This will be helpful to estimate the 
+    - Show the memory usage of 1st kernel : Add the new option
+      "--mem-usage" to show the memory usage at a given moment
+      in 1st kernel. This will be helpful to estimate the
       appropriate storage size to store a filtered dumpfile,
       thanks Baoquan.
 
-    -  hugepage filtering : Both THPs and hugetlbfs pages are now 
-       excluded as user pages.  As for hugetlbfs, this feature 
+    -  hugepage filtering : Both THPs and hugetlbfs pages are now
+       excluded as user pages.  As for hugetlbfs, this feature
        will be enabled for linux-3.16 or later.
 
     -  Support new kernels
@@ -1291,4 +1351,3 @@ makedumpfile (1.2.6-0ubuntu1) intrepid; urgency=low
   * Added initramfs hook to install makedumpfile into initrd
 
  -- Ben Collins <ben.collins@canonical.com>  Wed, 18 Jun 2008 18:15:32 -0400
-

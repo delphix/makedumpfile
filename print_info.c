@@ -39,6 +39,11 @@ show_version(void)
 #else
 	MSG("snappy\tdisabled\n");
 #endif
+#ifdef USEZSTD
+	MSG("zstd\tenabled\n");
+#else
+	MSG("zstd\tdisabled\n");
+#endif
 	MSG("\n");
 }
 
@@ -58,19 +63,25 @@ print_usage(void)
 #else
 	MSG("  disabled ('-p' option will be ignored.)\n");
 #endif
+	MSG("zstd support:\n");
+#ifdef USEZSTD
+	MSG("  enabled\n");
+#else
+	MSG("  disabled ('-z' option will be ignored.)\n");
+#endif
 	MSG("\n");
 	MSG("Usage:\n");
 	MSG("  Creating DUMPFILE:\n");
-	MSG("  # makedumpfile    [-c|-l|-p|-E] [-d DL] [-e] [-x VMLINUX|-i VMCOREINFO] VMCORE\n");
+	MSG("  # makedumpfile    [-c|-l|-p|-z|-E] [-d DL] [-e] [-x VMLINUX|-i VMCOREINFO] VMCORE\n");
 	MSG("    DUMPFILE\n");
 	MSG("\n");
 	MSG("  Creating DUMPFILE with filtered kernel data specified through filter config\n");
 	MSG("  file or eppic macro:\n");
-	MSG("  # makedumpfile    [-c|-l|-p|-E] [-d DL] -x VMLINUX [--config FILTERCONFIGFILE]\n");
+	MSG("  # makedumpfile    [-c|-l|-p|-z|-E] [-d DL] -x VMLINUX [--config FILTERCONFIGFILE]\n");
 	MSG("    [--eppic EPPICMACRO] VMCORE DUMPFILE\n");
 	MSG("\n");
 	MSG("  Outputting the dump data in the flattened format to the standard output:\n");
-	MSG("  # makedumpfile -F [-c|-l|-p|-E] [-d DL] [-x VMLINUX|-i VMCOREINFO] VMCORE\n");
+	MSG("  # makedumpfile -F [-c|-l|-p|-z|-E] [-d DL] [-x VMLINUX|-i VMCOREINFO] VMCORE\n");
 	MSG("\n");
 	MSG("  Rearranging the dump data in the flattened format to a readable DUMPFILE:\n");
 	MSG("  # makedumpfile -R DUMPFILE\n");
@@ -94,26 +105,27 @@ print_usage(void)
 	MSG("\n");
 	MSG("\n");
 	MSG("  Creating DUMPFILE of Xen:\n");
-	MSG("  # makedumpfile [-c|-l|-p|-E] [--xen-syms XEN-SYMS|--xen-vmcoreinfo VMCOREINFO]\n");
+	MSG("  # makedumpfile [-c|-l|-p|-z|-E] [--xen-syms XEN-SYMS|--xen-vmcoreinfo VMCOREINFO]\n");
 	MSG("    VMCORE DUMPFILE\n");
 	MSG("\n");
 	MSG("  Filtering domain-0 of Xen:\n");
-	MSG("  # makedumpfile [-c|-l|-p|-E] -d DL -x vmlinux VMCORE DUMPFILE\n");
+	MSG("  # makedumpfile [-c|-l|-p|-z|-E] -d DL -x vmlinux VMCORE DUMPFILE\n");
 	MSG("\n");
 	MSG("  Generating VMCOREINFO of Xen:\n");
 	MSG("  # makedumpfile -g VMCOREINFO --xen-syms XEN-SYMS\n");
 	MSG("\n");
 	MSG("\n");
 	MSG("  Creating DUMPFILE from multiple VMCOREs generated on sadump diskset configuration:\n");
-	MSG("  # makedumpfile [-c|-l|-p] [-d DL] -x VMLINUX --diskset=VMCORE1 --diskset=VMCORE2\n");
+	MSG("  # makedumpfile [-c|-l|-p|-z] [-d DL] -x VMLINUX --diskset=VMCORE1 --diskset=VMCORE2\n");
 	MSG("    [--diskset=VMCORE3 ..] DUMPFILE\n");
 	MSG("\n");
 	MSG("\n");
 	MSG("Available options:\n");
-	MSG("  [-c|-l|-p]:\n");
+	MSG("  [-c|-l|-p|-z]:\n");
 	MSG("      Compress dump data by each page using zlib for -c option, lzo for -l option\n");
-	MSG("      or snappy for -p option. A user cannot specify either of these options with\n");
-	MSG("      -E option, because the ELF format does not support compressed data.\n");
+	MSG("      snappy for -p option or zstd for -z option. A user cannot specify either of\n");
+	MSG("      these options with -E option, because the ELF format does not support\n");
+	MSG("      compressed data.\n");
 	MSG("      THIS IS ONLY FOR THE CRASH UTILITY.\n");
 	MSG("\n");
 	MSG("  [-e]:\n");
@@ -143,6 +155,9 @@ print_usage(void)
 	MSG("         8  |                            X\n");
 	MSG("        16  |                                    X\n");
 	MSG("        31  |   X       X        X       X       X\n");
+	MSG("\n");
+	MSG("  [-L SIZE]:\n");
+	MSG("      Limit the size of the output file to SIZE bytes.\n");
 	MSG("\n");
 	MSG("  [-E]:\n");
 	MSG("      Create DUMPFILE in the ELF format.\n");
@@ -308,6 +323,14 @@ print_usage(void)
 	MSG("      the crashkernel range, then calculates the page number of different kind per\n");
 	MSG("      vmcoreinfo. So currently /proc/kcore need be specified explicitly.\n");
 	MSG("\n");
+	MSG("  [--dry-run]:\n");
+	MSG("      Do not write the output dump file while still performing operations specified\n");
+	MSG("      by other options.  This option cannot be used with --dump-dmesg, --reassemble\n");
+	MSG("      and -g options.\n");
+	MSG("\n");
+	MSG("  [--show-stats]:\n");
+	MSG("      Set message-level to print report messages\n");
+	MSG("\n");
 	MSG("  [-D]:\n");
 	MSG("      Print debugging message.\n");
 	MSG("\n");
@@ -320,6 +343,10 @@ print_usage(void)
 	MSG("\n");
 	MSG("  [-v]:\n");
 	MSG("      Show the version of makedumpfile.\n");
+	MSG("\n");
+	MSG("  [--check-params]:\n");
+	MSG("      Only check whether the command-line parameters are valid or not, and exit.\n");
+	MSG("      Preferable to be given as the first parameter.\n");
 	MSG("\n");
 	MSG("  VMLINUX:\n");
 	MSG("      This is a pathname to the first kernel's vmlinux.\n");
@@ -353,21 +380,24 @@ static void calc_delta(struct timespec *ts_start, struct timespec *delta)
 	}
 }
 
-/* produce less than 12 bytes on msg */
-static int eta_to_human_short (unsigned long secs, char* msg)
+static int eta_to_human_short (unsigned long secs, char *msg, size_t len)
 {
-	strcpy(msg, "eta: ");
-	msg += strlen("eta: ");
+	unsigned long minutes, hours, days;
+
+	minutes = secs / 60;
+	hours = minutes / 60;
+	days = hours / 24;
+
 	if (secs < 100)
-		sprintf(msg, "%lus", secs);
-	else if (secs < 100 * 60)
-		sprintf(msg, "%lum%lus", secs / 60, secs % 60);
-	else if (secs < 48 * 3600)
-		sprintf(msg, "%luh%lum", secs / 3600, (secs / 60) % 60);
-	else if (secs < 100 * 86400)
-		sprintf(msg, "%lud%luh", secs / 86400, (secs / 3600) % 24);
+		snprintf(msg, len, "eta: %lus", secs);
+	else if (minutes < 100)
+		snprintf(msg, len, "eta: %lum%lus", minutes, secs % 60);
+	else if (hours < 48)
+		snprintf(msg, len, "eta: %luh%lum", hours, minutes % 60);
+	else if (days < 100)
+		snprintf(msg, len, "eta: %lud%luh", days, hours % 24);
 	else
-		sprintf(msg, ">2day");
+		snprintf(msg, len, "eta: >100day");
 	return 0;
 }
 
@@ -382,7 +412,7 @@ print_progress(const char *msg, unsigned long current, unsigned long end, struct
 	static const char *spinner = "/|\\-";
 	struct timespec delta;
 	unsigned long eta;
-	char eta_msg[16] = " ";
+	char eta_msg[32] = " ";
 	time_t frequency = flag_ignore_r_char ? 10 : 1;
 
 	if (current < end) {
@@ -398,7 +428,7 @@ print_progress(const char *msg, unsigned long current, unsigned long end, struct
 		calc_delta(start, &delta);
 		eta = 1000 * delta.tv_sec + delta.tv_nsec / (NSEC_PER_SEC / 1000);
 		eta = eta / progress - delta.tv_sec;
-		eta_to_human_short(eta, eta_msg);
+		eta_to_human_short(eta, eta_msg, sizeof(eta_msg));
 	}
 	if (flag_ignore_r_char) {
 		PROGRESS_MSG("%-" PROGRESS_MAXLEN "s: [%3u.%u %%]  %16s\n",
@@ -421,4 +451,3 @@ print_execution_time(char *step_name, struct timespec *ts_start)
 	REPORT_MSG("STEP [%s] : %ld.%06ld seconds\n",
 		   step_name, delta.tv_sec, delta.tv_nsec / 1000);
 }
-
