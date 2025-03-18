@@ -53,7 +53,7 @@ static enum desc_state get_desc_state(unsigned long id,
 	return DESC_STATE(state_val);
 }
 
-static void
+static int
 dump_record(struct prb_map *m, unsigned long id)
 {
 	unsigned long long ts_nsec;
@@ -80,7 +80,7 @@ dump_record(struct prb_map *m, unsigned long id)
 	state_var = ULONG(desc + OFFSET(prb_desc.state_var) + OFFSET(atomic_long_t.counter));
 	state = get_desc_state(id, state_var);
 	if (state != desc_committed && state != desc_finalized)
-		return;
+		return TRUE;
 
 	begin = ULONG(desc + OFFSET(prb_desc.text_blk_lpos) + OFFSET(prb_data_blk_lpos.begin)) %
 			m->text_data_ring_size;
@@ -89,7 +89,7 @@ dump_record(struct prb_map *m, unsigned long id)
 
 	/* skip data-less text blocks */
 	if (begin == next)
-		return;
+		return TRUE;
 
 	inf = m->infos + ((id % m->desc_ring_count) * SIZE(printk_info));
 
@@ -114,6 +114,18 @@ dump_record(struct prb_map *m, unsigned long id)
 
 	bufp = buf;
 	bufp += sprintf(buf, "[%5lld.%06ld] ", nanos, rem/1000);
+
+	if (OFFSET(printk_info.caller_id) != NOT_FOUND_STRUCTURE) {
+		const unsigned int cpuid = 0x80000000;
+		char cidbuf[PID_CHARS_MAX];
+		unsigned int cid;
+
+		/* Get id type, isolate id value in cid for print */
+		cid = UINT(inf + OFFSET(printk_info.caller_id));
+		sprintf(cidbuf, "%c%u", (cid & cpuid) ? 'C' : 'T', cid & ~cpuid);
+		bufp += sprintf(bufp, "[%*s] ", PID_CHARS_DEFAULT, cidbuf);
+	}
+
 	indent_len = strlen(buf);
 
 	/* How much buffer space is needed in the worst case */
@@ -121,8 +133,10 @@ dump_record(struct prb_map *m, unsigned long id)
 
 	for (i = 0, p = text; i < text_len; i++, p++) {
 		if (bufp - buf >= sizeof(buf) - buf_need) {
-			if (write(info->fd_dumpfile, buf, bufp - buf) < 0)
-				return;
+			if (!write_and_check_space(info->fd_dumpfile, buf,
+						   bufp - buf, "log",
+						   info->name_dumpfile))
+				return FALSE;
 			bufp = buf;
 		}
 
@@ -136,12 +150,14 @@ dump_record(struct prb_map *m, unsigned long id)
 
 	*bufp++ = '\n';
 
-	write(info->fd_dumpfile, buf, bufp - buf);
+	return write_and_check_space(info->fd_dumpfile, buf, bufp - buf,
+				     "log", info->name_dumpfile);
 }
 
 int
 dump_lockless_dmesg(void)
 {
+	unsigned long long clear_seq;
 	unsigned long head_id;
 	unsigned long tail_id;
 	unsigned long kaddr;
@@ -213,17 +229,38 @@ dump_lockless_dmesg(void)
 			OFFSET(atomic_long_t.counter));
 	head_id = ULONG(m.desc_ring + OFFSET(prb_desc_ring.head_id) +
 			OFFSET(atomic_long_t.counter));
+	if (info->flag_partial_dmesg && SYMBOL(clear_seq) != NOT_FOUND_SYMBOL) {
+		if (!readmem(VADDR, SYMBOL(clear_seq), &clear_seq,
+			     sizeof(clear_seq))) {
+			ERRMSG("Can't get clear_seq.\n");
+			goto out_text_data;
+		}
+		if (SIZE(latched_seq) != NOT_FOUND_STRUCTURE) {
+			kaddr = SYMBOL(clear_seq) + OFFSET(latched_seq.val) +
+				(clear_seq & 0x1) * sizeof(clear_seq);
+			if (!readmem(VADDR, kaddr, &clear_seq,
+				     sizeof(clear_seq))) {
+				ERRMSG("Can't get latched clear_seq.\n");
+				goto out_text_data;
+			}
+		}
+		tail_id = head_id - head_id % m.desc_ring_count +
+			  clear_seq % m.desc_ring_count;
+	}
 
 	if (!open_dump_file()) {
 		ERRMSG("Can't open output file.\n");
 		goto out_text_data;
 	}
 
-	for (id = tail_id; id != head_id; id = (id + 1) & DESC_ID_MASK)
-		dump_record(&m, id);
+	for (id = tail_id; id != head_id; id = (id + 1) & DESC_ID_MASK) {
+		if (!dump_record(&m, id))
+			goto out_text_data;
+	}
 
 	/* dump head record */
-	dump_record(&m, id);
+	if (!dump_record(&m, id))
+		goto out_text_data;
 
 	if (!close_files_for_creating_dumpfile())
 		goto out_text_data;

@@ -1,7 +1,7 @@
 # makedumpfile
 
-VERSION=1.6.7
-DATE=16 Jan 2020
+VERSION=1.7.5
+DATE=12 Apr 2024
 
 # Honour the environment variable CC
 ifeq ($(strip $CC),)
@@ -45,14 +45,14 @@ CFLAGS_ARCH += -m32
 endif
 
 SRC_BASE = makedumpfile.c makedumpfile.h diskdump_mod.h sadump_mod.h sadump_info.h
-SRC_PART = print_info.c dwarf_info.c elf_info.c erase_info.c sadump_info.c cache.c tools.c
+SRC_PART = print_info.c dwarf_info.c elf_info.c erase_info.c sadump_info.c cache.c tools.c printk.c detect_cycle.c
 OBJ_PART=$(patsubst %.c,%.o,$(SRC_PART))
-SRC_ARCH = arch/arm.c arch/arm64.c arch/x86.c arch/x86_64.c arch/ia64.c arch/ppc64.c arch/s390x.c arch/ppc.c arch/sparc64.c
+SRC_ARCH = arch/arm.c arch/arm64.c arch/x86.c arch/x86_64.c arch/ia64.c arch/ppc64.c arch/s390x.c arch/ppc.c arch/sparc64.c arch/mips64.c arch/loongarch64.c arch/riscv64.c
 OBJ_ARCH=$(patsubst %.c,%.o,$(SRC_ARCH))
 
 LIBS = -ldw -lbz2 -ldl -lelf -lz
 ifneq ($(LINKTYPE), dynamic)
-LIBS := -static $(LIBS)
+LIBS := -static $(LIBS) -llzma
 endif
 
 ifeq ($(USELZO), on)
@@ -62,10 +62,27 @@ endif
 
 ifeq ($(USESNAPPY), on)
 LIBS := -lsnappy $(LIBS)
+ifneq ($(LINKTYPE), dynamic)
+LIBS := $(LIBS) -lstdc++
+endif
 CFLAGS += -DUSESNAPPY
 endif
 
-LIBS := -lpthread $(LIBS)
+ifeq ($(USEZSTD), on)
+LIBS := -lzstd $(LIBS)
+CFLAGS += -DUSEZSTD
+endif
+
+ifeq ($(DEBUG), on)
+# Requires libasan
+CFLAGS += -fsanitize=address
+# Requires libubsan
+CFLAGS += -fsanitize=undefined
+# Warning: extremely slow
+#CFLAGS += -fanalyzer
+endif
+
+LIBS := $(LIBS) -lpthread
 
 try-run = $(shell set -e;		\
 	TMP=".$$$$.tmp";		\
@@ -95,26 +112,24 @@ $(OBJ_ARCH): $(SRC_ARCH)
 
 makedumpfile: $(SRC_BASE) $(OBJ_PART) $(OBJ_ARCH)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ_PART) $(OBJ_ARCH) -rdynamic -o $@ $< $(LIBS)
-	echo .TH MAKEDUMPFILE 8 \"$(DATE)\" \"makedumpfile v$(VERSION)\" \"Linux System Administrator\'s Manual\" > temp.8
-	grep -v "^.TH MAKEDUMPFILE 8" $(VPATH)makedumpfile.8 >> temp.8
-	mv temp.8 makedumpfile.8
-	gzip -c ./makedumpfile.8 > ./makedumpfile.8.gz
-	echo .TH MAKEDUMPFILE.CONF 5 \"$(DATE)\" \"makedumpfile v$(VERSION)\" \"Linux System Administrator\'s Manual\" > temp.5
-	grep -v "^.TH MAKEDUMPFILE.CONF 5" $(VPATH)makedumpfile.conf.5 >> temp.5
-	mv temp.5 makedumpfile.conf.5
-	gzip -c ./makedumpfile.conf.5 > ./makedumpfile.conf.5.gz
+	@sed -e "s/@DATE@/$(DATE)/" \
+	     -e "s/@VERSION@/$(VERSION)/" \
+	     $(VPATH)makedumpfile.8.in > $(VPATH)makedumpfile.8
+	@sed -e "s/@DATE@/$(DATE)/" \
+	     -e "s/@VERSION@/$(VERSION)/" \
+	     $(VPATH)makedumpfile.conf.5.in > $(VPATH)makedumpfile.conf.5
 
 eppic_makedumpfile.so: extension_eppic.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -rdynamic -o $@ extension_eppic.c -fPIC -leppic -ltinfo
 
 clean:
-	rm -f $(OBJ) $(OBJ_PART) $(OBJ_ARCH) makedumpfile makedumpfile.8.gz makedumpfile.conf.5.gz
+	rm -f $(OBJ) $(OBJ_PART) $(OBJ_ARCH) makedumpfile makedumpfile.8 makedumpfile.conf.5
 
 install:
-	install -m 755 -d ${DESTDIR}/usr/sbin ${DESTDIR}/usr/share/man/man5 ${DESTDIR}/usr/share/man/man8 ${DESTDIR}/etc
+	install -m 755 -d ${DESTDIR}/usr/sbin ${DESTDIR}/usr/share/man/man5 ${DESTDIR}/usr/share/man/man8
 	install -m 755 -t ${DESTDIR}/usr/sbin makedumpfile $(VPATH)makedumpfile-R.pl
-	install -m 644 -t ${DESTDIR}/usr/share/man/man8 makedumpfile.8.gz
-	install -m 644 -t ${DESTDIR}/usr/share/man/man5 makedumpfile.conf.5.gz
-	install -m 644 -D $(VPATH)makedumpfile.conf ${DESTDIR}/etc/makedumpfile.conf.sample
-	mkdir -p ${DESTDIR}/usr/share/makedumpfile-${VERSION}/eppic_scripts
-	install -m 644 -t ${DESTDIR}/usr/share/makedumpfile-${VERSION}/eppic_scripts/ $(VPATH)eppic_scripts/*
+	install -m 644 -t ${DESTDIR}/usr/share/man/man8 makedumpfile.8
+	install -m 644 -t ${DESTDIR}/usr/share/man/man5 makedumpfile.conf.5
+	mkdir -p ${DESTDIR}/usr/share/makedumpfile/eppic_scripts
+	install -m 644 -D $(VPATH)makedumpfile.conf ${DESTDIR}/usr/share/makedumpfile/makedumpfile.conf.sample
+	install -m 644 -t ${DESTDIR}/usr/share/makedumpfile/eppic_scripts/ $(VPATH)eppic_scripts/*

@@ -63,7 +63,6 @@ static int			flags_memory;
  */
 static unsigned int		num_pt_loads;
 static struct pt_load_segment	*pt_loads;
-static off_t			offset_pt_load_memory;
 
 /*
  * PT_NOTE information about /proc/vmcore:
@@ -502,66 +501,6 @@ paddr_to_offset2(unsigned long long paddr, off_t hint)
 	return offset;
 }
 
-unsigned long long
-page_head_to_phys_start(unsigned long long head_paddr)
-{
-	int i;
-	struct pt_load_segment *pls;
-
-	for (i = 0; i < num_pt_loads; i++) {
-		pls = &pt_loads[i];
-		if ((pls->phys_start <= head_paddr + info->page_size)
-		    && (head_paddr < pls->phys_end)) {
-			return (pls->phys_start > head_paddr) ?
-				pls->phys_start : head_paddr;
-		}
-	}
-
-	return 0;
-}
-
-unsigned long long
-page_head_to_phys_end(unsigned long long head_paddr)
-{
-	int i;
-	struct pt_load_segment *pls;
-
-	for (i = 0; i < num_pt_loads; i++) {
-		pls = &pt_loads[i];
-		if ((pls->phys_start <= head_paddr + info->page_size)
-		    && (head_paddr < pls->phys_end)) {
-			return (pls->phys_end < head_paddr + info->page_size) ?
-				pls->phys_end : head_paddr + info->page_size;
-		}
-	}
-
-	return 0;
-}
-
-/*
- *  Calculate a start File Offset of PT_LOAD from a File Offset
- *  of a page. If this function returns 0x0, the input page is
- *  not in the memory image.
- */
-off_t
-offset_to_pt_load_start(off_t offset)
-{
-	int i;
-	off_t pt_load_start;
-	struct pt_load_segment *pls;
-
-	for (i = pt_load_start = 0; i < num_pt_loads; i++) {
-		pls = &pt_loads[i];
-		if ((offset >= pls->file_offset)
-		    && (offset < pls->file_offset +
-			(pls->phys_end - pls->phys_start))) {
-			pt_load_start = pls->file_offset;
-			break;
-		}
-	}
-	return pt_load_start;
-}
-
 /*
  *  Calculate a end File Offset of PT_LOAD from a File Offset
  *  of a page. If this function returns 0x0, the input page is
@@ -689,7 +628,7 @@ get_max_paddr(void)
 
 	for (i = 0; i < num_pt_loads; i++) {
 		pls = &pt_loads[i];
-		if (max_paddr < pls->phys_end)
+		if (pls->phys_start != NOT_PADDR && max_paddr < pls->phys_end)
 			max_paddr = pls->phys_end;
 	}
 	return max_paddr;
@@ -854,15 +793,6 @@ int get_kcore_dump_loads(void)
 			return FALSE;
 		}
 
-		if (j == 0) {
-			offset_pt_load_memory = p->file_offset;
-			if (offset_pt_load_memory == 0) {
-				ERRMSG("Can't get the offset of page data.\n");
-				free(pls);
-				return FALSE;
-			}
-		}
-
 		pls[j] = *p;
 		j++;
 	}
@@ -940,13 +870,6 @@ get_elf_info(int fd, char *filename)
 		if (phdr.p_type != PT_LOAD)
 			continue;
 
-		if (j == 0) {
-			offset_pt_load_memory = phdr.p_offset;
-			if (offset_pt_load_memory == 0) {
-				ERRMSG("Can't get the offset of page data.\n");
-				return FALSE;
-			}
-		}
 		if (j >= num_pt_loads)
 			return FALSE;
 		if(!dump_Elf_load(&phdr, j))
@@ -1069,12 +992,6 @@ get_phdr_memory(int index, Elf64_Phdr *phdr)
 		phdr->p_align  = phdr32.p_align;
 	}
 	return TRUE;
-}
-
-off_t
-get_offset_pt_load_memory(void)
-{
-	return offset_pt_load_memory;
 }
 
 int

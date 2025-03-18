@@ -22,7 +22,7 @@
 #define DISK_DUMP_SIGNATURE		"DISKDUMP"
 #define KDUMP_SIGNATURE			"KDUMP   "
 #define SIG_LEN (sizeof(DUMP_PARTITION_SIGNATURE) - 1)
-#define DISKDUMP_HEADER_BLOCKS		(1)
+#define DISKDUMP_HEADER_BLOCKS		(1UL)
 
 /*
  * These are all remnants of the old "diskdump" facility,
@@ -98,6 +98,7 @@ struct kdump_sub_header {
 #define DUMP_DH_COMPRESSED_INCOMPLETE	0x8
 					/* indicate an incomplete dumpfile */
 #define DUMP_DH_EXCLUDED_VMEMMAP 0x10	/* unused vmemmap pages are excluded */
+#define DUMP_DH_COMPRESSED_ZSTD  0x20	/* page is compressed with zstd */
 
 /* descriptor of each page for vmcore */
 typedef struct page_desc {
