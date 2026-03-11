@@ -96,7 +96,6 @@ mdf_pfn_t pfn_zero;
 mdf_pfn_t pfn_memhole;
 mdf_pfn_t pfn_cache;
 mdf_pfn_t pfn_cache_private;
-mdf_pfn_t pfn_private_filter_pages;
 mdf_pfn_t pfn_user;
 mdf_pfn_t pfn_free;
 mdf_pfn_t pfn_hwpoison;
@@ -276,26 +275,13 @@ isHugetlb(unsigned long dtor)
 		   && (SYMBOL(free_huge_page) == dtor));
 }
 
-static inline int
-isSlab(unsigned long flags, unsigned int _mapcount)
-{
-	/* Linux 6.10 and later */
-	if (NUMBER(PAGE_SLAB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-		unsigned int PG_slab = ~NUMBER(PAGE_SLAB_MAPCOUNT_VALUE);
-		if ((_mapcount & (PAGE_TYPE_BASE | PG_slab)) == PAGE_TYPE_BASE)
-			return TRUE;
-	}
-
-	return flags & (1UL << NUMBER(PG_slab));
-}
-
 static int
 isOffline(unsigned long flags, unsigned int _mapcount)
 {
 	if (NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE) == NOT_FOUND_NUMBER)
 		return FALSE;
 
-	if (isSlab(flags, _mapcount))
+	if (flags & (1UL << NUMBER(PG_slab)))
 		return FALSE;
 
 	if (_mapcount == (int)NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE))
@@ -316,15 +302,6 @@ is_cache_page(unsigned long flags)
 	 */
 	if ((NUMBER(PG_swapbacked) == NOT_FOUND_NUMBER || isSwapBacked(flags))
 	    && isSwapCache(flags))
-		return TRUE;
-
-	return FALSE;
-}
-
-static int
-is_filtered_page(unsigned long filter, unsigned long flags, unsigned long private)
-{
-	if (isPrivate(flags) && private == filter)
 		return TRUE;
 
 	return FALSE;
@@ -2998,9 +2975,7 @@ read_vmcoreinfo(void)
 	READ_SRCFILE("pud_t", pud_t);
 
 	READ_NUMBER("PAGE_BUDDY_MAPCOUNT_VALUE", PAGE_BUDDY_MAPCOUNT_VALUE);
-	READ_NUMBER("PAGE_HUGETLB_MAPCOUNT_VALUE", PAGE_HUGETLB_MAPCOUNT_VALUE);
 	READ_NUMBER("PAGE_OFFLINE_MAPCOUNT_VALUE", PAGE_OFFLINE_MAPCOUNT_VALUE);
-	READ_NUMBER("PAGE_SLAB_MAPCOUNT_VALUE", PAGE_SLAB_MAPCOUNT_VALUE);
 	READ_NUMBER("phys_base", phys_base);
 	READ_NUMBER("KERNEL_IMAGE_SIZE", KERNEL_IMAGE_SIZE);
 
@@ -4674,14 +4649,6 @@ out:
 	if (is_xen_memory() && !get_dom0_mapnr())
 		return FALSE;
 
-	/*
-	 * If kdump-tools called us, set flag_ignore_r_char since stderr
-	 * will be sent to a line buffering console and we want the '\r'
-	 * to be replace by a '\n' in PROGRESS_MSG() output.
-	 */
-	if (getenv("KDUMP_KERNEL") != NULL)
-		flag_ignore_r_char = 1;
-
 	if (debug_info) {
 		if (info->flag_sadump)
 			(void) sadump_virt_phys_base();
@@ -6075,7 +6042,7 @@ static int
 page_is_buddy_v3(unsigned long flags, unsigned int _mapcount,
 			unsigned long private, unsigned int _count)
 {
-	if (isSlab(flags, _mapcount))
+	if (flags & (1UL << NUMBER(PG_slab)))
 		return FALSE;
 
 	if (_mapcount == (int)NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE))
@@ -6543,9 +6510,6 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 		_count  = UINT(pcache + OFFSET(page._refcount));
 		mapping = ULONG(pcache + OFFSET(page.mapping));
 
-		if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
-			_mapcount = UINT(pcache + OFFSET(page._mapcount));
-
 		compound_order = 0;
 		compound_dtor = 0;
 		/*
@@ -6555,22 +6519,6 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 		 */
 		if ((index_pg < PGMM_CACHED - 1) && isCompoundHead(flags)) {
 			unsigned char *addr = pcache + SIZE(page);
-
-			/*
-			 * Linux 6.9 and later kernels use _mapcount value for hugetlb pages.
-			 * See kernel commit d99e3140a4d3.
-			 */
-			if (NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-				unsigned long _flags_1 = ULONG(addr + OFFSET(page.flags));
-				unsigned int PG_hugetlb = ~NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE);
-
-				compound_order = _flags_1 & 0xff;
-
-				if ((_mapcount & (PAGE_TYPE_BASE | PG_hugetlb)) == PAGE_TYPE_BASE)
-					compound_dtor = IS_HUGETLB;
-
-				goto check_order;
-			}
 
 			/*
 			 * Linux 6.6 and later.  Kernels that have PG_hugetlb should also
@@ -6616,6 +6564,8 @@ check_order:
 		if (OFFSET(page.compound_head) != NOT_FOUND_STRUCTURE)
 			compound_head = ULONG(pcache + OFFSET(page.compound_head));
 
+		if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
+			_mapcount = UINT(pcache + OFFSET(page._mapcount));
 		if (OFFSET(page.private) != NOT_FOUND_STRUCTURE)
 			private = ULONG(pcache + OFFSET(page.private));
 
@@ -6650,7 +6600,7 @@ check_order:
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE)
 		    && is_cache_page(flags)
-		    && !isPrivate(flags) && !isAnon(mapping, flags, _mapcount)) {
+		    && !isPrivate(flags) && !isAnon(mapping, flags)) {
 			pfn_counter = &pfn_cache;
 		}
 		/*
@@ -6658,18 +6608,11 @@ check_order:
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE_PRI)
 		    && is_cache_page(flags)
-		    && !isAnon(mapping, flags, _mapcount)) {
+		    && !isAnon(mapping, flags)) {
 			if (isPrivate(flags))
 				pfn_counter = &pfn_cache_private;
 			else
 				pfn_counter = &pfn_cache;
-		}
-		/*
-		 * Exclude private filter pages
-		 */
-		else if ((info->dump_level & DL_EXCLUDE_CACHE_PRI)
-		    && is_filtered_page(info->private_page_filter, flags, private)) {
-			pfn_counter = &pfn_private_filter_pages;
 		}
 		/*
 		 * Exclude the data page of the user process.
@@ -6677,7 +6620,7 @@ check_order:
 		 *  - hugetlbfs pages
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_USER_DATA)
-			 && (isAnon(mapping, flags, _mapcount) || isHugetlb(compound_dtor))) {
+			 && (isAnon(mapping, flags) || isHugetlb(compound_dtor))) {
 			pfn_counter = &pfn_user;
 		}
 		/*
@@ -8240,7 +8183,6 @@ write_elf_pages_cyclic(struct cache_data *cd_header, struct cache_data *cd_page)
 	if (info->flag_cyclic) {
 		pfn_zero = pfn_cache = pfn_cache_private = 0;
 		pfn_user = pfn_free = pfn_hwpoison = pfn_offline = 0;
-		pfn_private_filter_pages = 0;
 		pfn_memhole = info->max_mapnr;
 	}
 
@@ -9579,7 +9521,6 @@ write_kdump_pages_and_bitmap_cyclic(struct cache_data *cd_header, struct cache_d
 		 */
 		pfn_zero = pfn_cache = pfn_cache_private = 0;
 		pfn_user = pfn_free = pfn_hwpoison = pfn_offline = 0;
-		pfn_private_filter_pages = 0;
 		pfn_memhole = info->max_mapnr;
 
 		/*
@@ -10528,7 +10469,7 @@ print_report(void)
 	pfn_original = info->max_mapnr - pfn_memhole;
 
 	pfn_excluded = pfn_zero + pfn_cache + pfn_cache_private
-	    + pfn_user + pfn_free + pfn_hwpoison + pfn_offline + pfn_private_filter_pages;
+	    + pfn_user + pfn_free + pfn_hwpoison + pfn_offline;
 
 	REPORT_MSG("\n");
 	REPORT_MSG("Original pages  : 0x%016llx\n", pfn_original);
@@ -10540,9 +10481,6 @@ print_report(void)
 	REPORT_MSG("    Non-private cache pages : 0x%016llx\n", pfn_cache);
 	REPORT_MSG("    Private cache pages     : 0x%016llx\n",
 	    pfn_cache_private);
-	if (pfn_private_filter_pages != 0)
-		REPORT_MSG("    private filter pages : 0x%016llx\n",
-		    pfn_private_filter_pages);
 	REPORT_MSG("    User process data pages : 0x%016llx\n", pfn_user);
 	REPORT_MSG("    Free pages              : 0x%016llx\n", pfn_free);
 	REPORT_MSG("    Hwpoison pages          : 0x%016llx\n", pfn_hwpoison);
@@ -10587,7 +10525,7 @@ print_mem_usage(void)
 	pfn_original = info->max_mapnr - pfn_memhole;
 
 	pfn_excluded = pfn_zero + pfn_cache + pfn_cache_private
-	    + pfn_user + pfn_free + pfn_hwpoison + pfn_offline + pfn_private_filter_pages;
+	    + pfn_user + pfn_free + pfn_hwpoison + pfn_offline;
 	shrinking = (pfn_original - pfn_excluded) * 100;
 	shrinking = shrinking / pfn_original;
 	total_size = info->page_size * pfn_original;
@@ -10601,9 +10539,6 @@ print_mem_usage(void)
 	    pfn_cache);
 	MSG("PRI_CACHE	%-16llu	yes		Cache pages with private flag\n",
 	    pfn_cache_private);
-	if (pfn_private_filter_pages != 0)
-		MSG("FILTERED 	%-16llu	yes		private filter pages\n",
-		    pfn_private_filter_pages);
 	MSG("USER		%-16llu	yes		User process pages\n", pfn_user);
 	MSG("FREE		%-16llu	yes		Free pages\n", pfn_free);
 	MSG("KERN_DATA	%-16llu	no		Dumpable kernel data \n",
@@ -12136,7 +12071,6 @@ static struct option longopts[] = {
 	{"check-params", no_argument, NULL, OPT_CHECK_PARAMS},
 	{"dry-run", no_argument, NULL, OPT_DRY_RUN},
 	{"show-stats", no_argument, NULL, OPT_SHOW_STATS},
-	{"private-page-filter", required_argument, NULL, OPT_PRIVATE_PAGE_FILTER},
 	{0, 0, 0, 0}
 };
 
@@ -12288,22 +12222,6 @@ main(int argc, char *argv[])
 			break;
 		case OPT_EXCLUDE_XEN_DOM:
 			info->flag_exclude_xen_dom = 1;
-			break;
-		case OPT_PRIVATE_PAGE_FILTER:
-			if (info->private_page_filter != 0) {
-				MSG("Only one private filter can be specified\n");
-				MSG("Try `makedumpfile --help' for more information.\n");
-				goto out;
-			} else {
-				char *endp;
-
-				info->private_page_filter = strtoul(optarg, &endp, 0);
-				if (*endp || errno != 0 || info->private_page_filter == 0) {
-					MSG("filter must be a non-zero number\n");
-					goto out;
-				}
-			}
-			MSG("Page filter: 0x%lx\n", info->private_page_filter);
 			break;
 		case OPT_VMLINUX:
 			info->name_vmlinux = optarg;

@@ -1,7 +1,8 @@
 Source: makedumpfile
 Section: devel
 Priority: optional
-Maintainer: Debian Kdump <team+kdump@tracker.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Kdump <team+kdump@tracker.debian.org>
 Uploaders: dann frazier <dannf@debian.org>,
            Thadeu Lima de Souza Cascardo <cascardo@debian.org>
 Standards-Version: 4.5.1

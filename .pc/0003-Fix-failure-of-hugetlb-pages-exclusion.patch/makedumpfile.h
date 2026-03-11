@@ -161,10 +161,9 @@ test_bit(int nr, unsigned long addr)
 #define isSwapBacked(flags)	test_bit(NUMBER(PG_swapbacked), flags)
 #define isHWPOISON(flags)	(test_bit(NUMBER(PG_hwpoison), flags) \
 				&& (NUMBER(PG_hwpoison) != NOT_FOUND_NUMBER))
-#define isAnon(mapping, flags, _mapcount) \
-	(((unsigned long)mapping & PAGE_MAPPING_ANON) != 0 && !isSlab(flags, _mapcount))
-
-#define PAGE_TYPE_BASE		(0xf0000000)
+#define isSlab(flags)		test_bit(NUMBER(PG_slab), flags)
+#define isAnon(mapping, flags)	(((unsigned long)mapping & PAGE_MAPPING_ANON) != 0 \
+				&& !isSlab(flags))
 
 #define PTOB(X)			(((unsigned long long)(X)) << PAGESHIFT())
 #define BTOP(X)			(((unsigned long long)(X)) >> PAGESHIFT())
@@ -1566,7 +1565,6 @@ struct DumpInfo {
 	int		vmemmap_cnt;
 	struct ppc64_vmemmap	*vmemmap_list;
 	unsigned long	kaslr_offset;
-	unsigned long	private_page_filter;
 
 	/*
 	 * for compound page
@@ -2257,9 +2255,7 @@ struct number_table {
 	long    PG_hugetlb;
 
 	long	PAGE_BUDDY_MAPCOUNT_VALUE;
-	long	PAGE_HUGETLB_MAPCOUNT_VALUE;
 	long	PAGE_OFFLINE_MAPCOUNT_VALUE;
-	long	PAGE_SLAB_MAPCOUNT_VALUE;
 	long	SECTION_SIZE_BITS;
 	long	MAX_PHYSMEM_BITS;
 	long    HUGETLB_PAGE_DTOR;
@@ -2736,7 +2732,6 @@ struct elf_prstatus {
 #define OPT_CHECK_PARAMS        OPT_START+18
 #define OPT_DRY_RUN             OPT_START+19
 #define OPT_SHOW_STATS          OPT_START+20
-#define OPT_PRIVATE_PAGE_FILTER OPT_START+21
 
 /*
  * Function Prototype.
