@@ -275,26 +275,13 @@ isHugetlb(unsigned long dtor)
 		   && (SYMBOL(free_huge_page) == dtor));
 }
 
-static inline int
-isSlab(unsigned long flags, unsigned int _mapcount)
-{
-	/* Linux 6.10 and later */
-	if (NUMBER(PAGE_SLAB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-		unsigned int PG_slab = ~NUMBER(PAGE_SLAB_MAPCOUNT_VALUE);
-		if ((_mapcount & (PAGE_TYPE_BASE | PG_slab)) == PAGE_TYPE_BASE)
-			return TRUE;
-	}
-
-	return flags & (1UL << NUMBER(PG_slab));
-}
-
 static int
 isOffline(unsigned long flags, unsigned int _mapcount)
 {
 	if (NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE) == NOT_FOUND_NUMBER)
 		return FALSE;
 
-	if (isSlab(flags, _mapcount))
+	if (flags & (1UL << NUMBER(PG_slab)))
 		return FALSE;
 
 	if (_mapcount == (int)NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE))
@@ -2988,9 +2975,7 @@ read_vmcoreinfo(void)
 	READ_SRCFILE("pud_t", pud_t);
 
 	READ_NUMBER("PAGE_BUDDY_MAPCOUNT_VALUE", PAGE_BUDDY_MAPCOUNT_VALUE);
-	READ_NUMBER("PAGE_HUGETLB_MAPCOUNT_VALUE", PAGE_HUGETLB_MAPCOUNT_VALUE);
 	READ_NUMBER("PAGE_OFFLINE_MAPCOUNT_VALUE", PAGE_OFFLINE_MAPCOUNT_VALUE);
-	READ_NUMBER("PAGE_SLAB_MAPCOUNT_VALUE", PAGE_SLAB_MAPCOUNT_VALUE);
 	READ_NUMBER("phys_base", phys_base);
 	READ_NUMBER("KERNEL_IMAGE_SIZE", KERNEL_IMAGE_SIZE);
 
@@ -6057,7 +6042,7 @@ static int
 page_is_buddy_v3(unsigned long flags, unsigned int _mapcount,
 			unsigned long private, unsigned int _count)
 {
-	if (isSlab(flags, _mapcount))
+	if (flags & (1UL << NUMBER(PG_slab)))
 		return FALSE;
 
 	if (_mapcount == (int)NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE))
@@ -6525,9 +6510,6 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 		_count  = UINT(pcache + OFFSET(page._refcount));
 		mapping = ULONG(pcache + OFFSET(page.mapping));
 
-		if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
-			_mapcount = UINT(pcache + OFFSET(page._mapcount));
-
 		compound_order = 0;
 		compound_dtor = 0;
 		/*
@@ -6537,22 +6519,6 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 		 */
 		if ((index_pg < PGMM_CACHED - 1) && isCompoundHead(flags)) {
 			unsigned char *addr = pcache + SIZE(page);
-
-			/*
-			 * Linux 6.9 and later kernels use _mapcount value for hugetlb pages.
-			 * See kernel commit d99e3140a4d3.
-			 */
-			if (NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-				unsigned long _flags_1 = ULONG(addr + OFFSET(page.flags));
-				unsigned int PG_hugetlb = ~NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE);
-
-				compound_order = _flags_1 & 0xff;
-
-				if ((_mapcount & (PAGE_TYPE_BASE | PG_hugetlb)) == PAGE_TYPE_BASE)
-					compound_dtor = IS_HUGETLB;
-
-				goto check_order;
-			}
 
 			/*
 			 * Linux 6.6 and later.  Kernels that have PG_hugetlb should also
@@ -6598,6 +6564,8 @@ check_order:
 		if (OFFSET(page.compound_head) != NOT_FOUND_STRUCTURE)
 			compound_head = ULONG(pcache + OFFSET(page.compound_head));
 
+		if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
+			_mapcount = UINT(pcache + OFFSET(page._mapcount));
 		if (OFFSET(page.private) != NOT_FOUND_STRUCTURE)
 			private = ULONG(pcache + OFFSET(page.private));
 
@@ -6632,7 +6600,7 @@ check_order:
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE)
 		    && is_cache_page(flags)
-		    && !isPrivate(flags) && !isAnon(mapping, flags, _mapcount)) {
+		    && !isPrivate(flags) && !isAnon(mapping, flags)) {
 			pfn_counter = &pfn_cache;
 		}
 		/*
@@ -6640,7 +6608,7 @@ check_order:
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE_PRI)
 		    && is_cache_page(flags)
-		    && !isAnon(mapping, flags, _mapcount)) {
+		    && !isAnon(mapping, flags)) {
 			if (isPrivate(flags))
 				pfn_counter = &pfn_cache_private;
 			else
@@ -6652,7 +6620,7 @@ check_order:
 		 *  - hugetlbfs pages
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_USER_DATA)
-			 && (isAnon(mapping, flags, _mapcount) || isHugetlb(compound_dtor))) {
+			 && (isAnon(mapping, flags) || isHugetlb(compound_dtor))) {
 			pfn_counter = &pfn_user;
 		}
 		/*
