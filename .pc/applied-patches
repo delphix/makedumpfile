@@ -1,3 +1,1 @@
-0002-adapt-makefile-to-debian.patch
-0003-Fix-failure-of-hugetlb-pages-exclusion.patch
-0004-Fix-wrong-exclusion-of-Slab-pages.patch
+adapt-makefile-to-debian.patch

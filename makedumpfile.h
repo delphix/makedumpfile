@@ -164,8 +164,6 @@ test_bit(int nr, unsigned long addr)
 #define isAnon(mapping, flags, _mapcount) \
 	(((unsigned long)mapping & PAGE_MAPPING_ANON) != 0 && !isSlab(flags, _mapcount))
 
-#define PAGE_TYPE_BASE		(0xf0000000)
-
 #define PTOB(X)			(((unsigned long long)(X)) << PAGESHIFT())
 #define BTOP(X)			(((unsigned long long)(X)) >> PAGESHIFT())
 
@@ -499,7 +497,7 @@ do { \
 #define KVER_MIN_SHIFT 16
 #define KERNEL_VERSION(x,y,z) (((x) << KVER_MAJ_SHIFT) | ((y) << KVER_MIN_SHIFT) | (z))
 #define OLDEST_VERSION		KERNEL_VERSION(2, 6, 15) /* linux-2.6.15 */
-#define LATEST_VERSION		KERNEL_VERSION(6, 8, 4)  /* linux-6.8.4 */
+#define LATEST_VERSION		KERNEL_VERSION(6, 14, 2) /* linux-6.14.2 */
 
 /*
  * for printk caller_id support

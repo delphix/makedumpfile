@@ -1,7 +1,7 @@
 # makedumpfile
 
-VERSION=1.7.5
-DATE=12 Apr 2024
+VERSION=1.7.7
+DATE=21 Apr 2025
 
 # Honour the environment variable CC
 ifeq ($(strip $CC),)
@@ -101,6 +101,8 @@ LINK_TEST_PROG="int main() { return 0; }"
 LIBS := $(LIBS) $(call try-run,\
 	echo $(LINK_TEST_PROG) | $(CC) -o "$$TMP" -x c - -lebl,-lebl,)
 
+SBINDIR ?= /usr/sbin
+
 all: makedumpfile
 
 $(OBJ_PART): $(SRC_PART)
@@ -126,10 +128,10 @@ clean:
 	rm -f $(OBJ) $(OBJ_PART) $(OBJ_ARCH) makedumpfile makedumpfile.8 makedumpfile.conf.5
 
 install:
-	install -m 755 -d ${DESTDIR}/usr/bin ${DESTDIR}/usr/share/man/man5 ${DESTDIR}/usr/share/man/man8
-	install -m 755 -t ${DESTDIR}/usr/bin makedumpfile $(VPATH)makedumpfile-R.pl
-	install -m 644 -t ${DESTDIR}/usr/share/man/man8 makedumpfile.8
-	install -m 644 -t ${DESTDIR}/usr/share/man/man5 makedumpfile.conf.5
+
+	install -m 755 -D -t ${DESTDIR}${SBINDIR} makedumpfile $(VPATH)makedumpfile-R.pl
+	install -m 644 -D -t ${DESTDIR}/usr/share/man/man8 makedumpfile.8
+	install -m 644 -D -t ${DESTDIR}/usr/share/man/man5 makedumpfile.conf.5
 	mkdir -p ${DESTDIR}/usr/share/makedumpfile/eppic_scripts
 	install -m 644 -D $(VPATH)makedumpfile.conf ${DESTDIR}/usr/share/makedumpfile/makedumpfile.conf.sample
 	install -m 644 -t ${DESTDIR}/usr/share/makedumpfile/eppic_scripts/ $(VPATH)eppic_scripts/*
