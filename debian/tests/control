@@ -1,0 +1,7 @@
+Test-Command: ./debian/tests/sanity.py -v
+Restrictions:
+ allow-stderr,
+ superficial,
+Depends:
+ @,
+ python3,
