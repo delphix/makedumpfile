@@ -281,8 +281,7 @@ isSlab(unsigned long flags, unsigned int _mapcount)
 {
 	/* Linux 6.10 and later */
 	if (NUMBER(PAGE_SLAB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-		unsigned int PG_slab = ~NUMBER(PAGE_SLAB_MAPCOUNT_VALUE);
-		if ((_mapcount & (PAGE_TYPE_BASE | PG_slab)) == PAGE_TYPE_BASE)
+		if (_mapcount == (int)NUMBER(PAGE_SLAB_MAPCOUNT_VALUE))
 			return TRUE;
 	}
 
@@ -4455,7 +4454,7 @@ initial(void)
 #endif
 
 	if (info->flag_exclude_xen_dom && !is_xen_memory()) {
-		MSG("'-X' option is disable,");
+		MSG("'-X' option is disabled, ");
 		MSG("because %s is not Xen's memory core image.\n", info->name_memory);
 		MSG("Commandline parameter is invalid.\n");
 		MSG("Try `makedumpfile --help' for more information.\n");
@@ -4538,7 +4537,7 @@ initial(void)
 
 	if (info->flag_refiltering) {
 		if (info->flag_elf_dumpfile) {
-			MSG("'-E' option is disable, ");
+			MSG("'-E' option is disabled, ");
 			MSG("because %s is kdump compressed format.\n",
 							info->name_memory);
 			return FALSE;
@@ -4552,7 +4551,7 @@ initial(void)
 
 	} else if (info->flag_sadump) {
 		if (info->flag_elf_dumpfile) {
-			MSG("'-E' option is disable, ");
+			MSG("'-E' option is disabled, ");
 			MSG("because %s is sadump %s format.\n",
 			    info->name_memory, sadump_format_type_name());
 			return FALSE;
@@ -4646,14 +4645,14 @@ out:
 
 	if (info->num_threads) {
 		if (is_xen_memory()) {
-			MSG("'--num-threads' option is disable,\n");
+			MSG("'--num-threads' option is disabled,\n");
 			MSG("because %s is Xen's memory core image.\n",
 							info->name_memory);
 			return FALSE;
 		}
 
 		if (info->flag_sadump) {
-			MSG("'--num-threads' option is disable,\n");
+			MSG("'--num-threads' option is disabled,\n");
 			MSG("because %s is sadump %s format.\n",
 			    info->name_memory, sadump_format_type_name());
 			return FALSE;
@@ -4740,7 +4739,7 @@ out:
 			DEBUG_MSG("mmap() is available on the kernel.\n");
 			info->flag_usemmap = MMAP_ENABLE;
 		} else {
-			DEBUG_MSG("The kernel doesn't support mmap(),");
+			DEBUG_MSG("The kernel doesn't support mmap(), ");
 			DEBUG_MSG("read() will be used instead.\n");
 			info->flag_usemmap = MMAP_DISABLE;
 		}
@@ -5233,7 +5232,7 @@ exclude_nodata_pages(struct cycle *cycle)
 				   NULL, &file_size)) {
 		unsigned long long pfn, pfn_end;
 
-		pfn = paddr_to_pfn(phys_start + file_size);
+		pfn = paddr_to_pfn(roundup(phys_start + file_size, PAGESIZE()));
 		pfn_end = paddr_to_pfn(roundup(phys_end, PAGESIZE()));
 
 		if (pfn < cycle->start_pfn)
@@ -5271,6 +5270,9 @@ reserve_diskspace(int fd, off_t start_offset, off_t end_offset, char *file_name)
 	char *buf = NULL;
 
 	int ret = FALSE;
+
+	if (info->flag_flatten)
+		return TRUE;
 
 	assert(start_offset < end_offset);
 	buf_size = end_offset - start_offset;
@@ -5896,7 +5898,11 @@ dump_dmesg()
 				char *first;
 
 				/* Clear everything we have already written... */
-				ftruncate(info->fd_dumpfile, 0);
+				if (ftruncate(info->fd_dumpfile, 0) != 0) {
+					ERRMSG("Can't truncate file(%s). %s\n",
+					       info->name_dumpfile, strerror(errno));
+					goto out;
+				}
 				lseek(info->fd_dumpfile, 0, SEEK_SET);
 
 				/* ...and only write up to the corruption. */
@@ -6090,12 +6096,10 @@ setup_page_is_buddy(void)
 	if (OFFSET(page.private) == NOT_FOUND_STRUCTURE)
 		goto out;
 
-	if (NUMBER(PG_buddy) == NOT_FOUND_NUMBER) {
-		if (NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-			if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
-				info->page_is_buddy = page_is_buddy_v3;
-		}
-	} else
+	if (NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
+		if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
+			info->page_is_buddy = page_is_buddy_v3;
+	} else if (NUMBER(PG_buddy) != NOT_FOUND_NUMBER)
 		info->page_is_buddy = page_is_buddy_v2;
 
 out:
@@ -6562,11 +6566,10 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 			 */
 			if (NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
 				unsigned long _flags_1 = ULONG(addr + OFFSET(page.flags));
-				unsigned int PG_hugetlb = ~NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE);
 
 				compound_order = _flags_1 & 0xff;
 
-				if ((_mapcount & (PAGE_TYPE_BASE | PG_hugetlb)) == PAGE_TYPE_BASE)
+				if (_mapcount == (int)NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE))
 					compound_dtor = IS_HUGETLB;
 
 				goto check_order;
@@ -12052,14 +12055,14 @@ int show_mem_usage(void)
 		DEBUG_MSG("Read vmcoreinfo from NOTE segment: %d\n", vmcoreinfo);
 	}
 
-	if (!get_page_offset())
-		return FALSE;
-
-	/* paddr_to_vaddr() on arm64 needs phys_base. */
-	if (!get_phys_base())
-		return FALSE;
-
 	if (!vmcoreinfo) {
+		if (!get_page_offset())
+			return FALSE;
+
+		/* paddr_to_vaddr() on arm64 needs phys_base. */
+		if (!get_phys_base())
+			return FALSE;
+
 		if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
 			return FALSE;
 
